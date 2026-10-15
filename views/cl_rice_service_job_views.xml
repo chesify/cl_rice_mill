@@ -101,6 +101,11 @@
                         </page>
                         <page string="Notes" name="notes">
                             <field name="note"/>
+                            <group invisible="source != 'field'">
+                                <field name="source"/>
+                                <field name="photo" widget="image" options="{'size': [0, 240]}"/>
+                                <field name="cl_client_uuid" groups="base.group_no_one"/>
+                            </group>
                         </page>
                     </notebook>
                 </sheet>
@@ -122,6 +127,7 @@
                 <filter name="my" string="My Farmers" domain="[('field_officer_id', '=', uid)]"/>
                 <separator/>
                 <filter name="to_charge" string="To Charge" domain="[('state', '=', 'done')]"/>
+                <filter name="from_field" string="From the Field App" domain="[('source', '=', 'field'), ('state', '=', 'draft')]"/>
                 <filter name="free" string="Free Services" domain="[('is_free', '=', True)]"/>
                 <separator/>
                 <filter name="date" string="Date" date="date"/>

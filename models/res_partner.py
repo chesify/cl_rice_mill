@@ -42,9 +42,14 @@ class ResPartner(models.Model):
     cl_payout_bank_id = fields.Many2one(
         'res.partner.bank', string="Payout Bank Account", groups=SENSITIVE_GROUPS,
         domain="[('partner_id', '=', id)]")
+    cl_client_uuid = fields.Char(
+        string="Field App ID", readonly=True, copy=False,
+        help="Identifier given by the field app; a registration sent twice is only created once.")
     cl_farmer_season_ids = fields.One2many('cl.rice.farmer.season', 'partner_id', string="Farmer Seasons")
     cl_farmer_season_count = fields.Integer(compute='_compute_cl_farmer_season_count')
 
+    _cl_client_uuid_uniq = models.UniqueIndex(
+        '(cl_client_uuid) WHERE cl_client_uuid IS NOT NULL', "This field registration was already received.")
     _cl_farmer_code_uniq = models.UniqueIndex(
         '(cl_farmer_code, company_id) WHERE cl_farmer_code IS NOT NULL',
         "The farmer code must be unique.")

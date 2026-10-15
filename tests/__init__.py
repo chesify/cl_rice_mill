@@ -4,3 +4,4 @@ from . import test_stock_milling
 from . import test_release_settlement
 from . import test_opening_balance
 from . import test_removed_features
+from . import test_field_sync

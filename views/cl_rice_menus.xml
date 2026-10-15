@@ -17,6 +17,8 @@
     <menuitem id="cl_rice_menu_operations" name="Operations" parent="cl_rice_menu_root" sequence="20"/>
     <menuitem id="cl_rice_service_job_menu" name="Service Jobs" parent="cl_rice_menu_operations"
               action="cl_rice_service_job_action" sequence="10"/>
+    <menuitem id="cl_rice_field_app_menu" name="Field App (offline)" parent="cl_rice_menu_operations"
+              action="cl_rice_field_app_action" sequence="5"/>
     <menuitem id="cl_rice_intake_menu" name="Paddy Intake" parent="cl_rice_menu_operations"
               action="cl_rice_intake_action" sequence="20"
               groups="cl_rice_mill.cl_rice_mill_group_warehouse,cl_rice_mill.cl_rice_mill_group_accountant"/>

@@ -66,7 +66,15 @@ class ClRiceServiceJob(models.Model):
     operator_move_id = fields.Many2one('account.move', string="Operator Entry", readonly=True, copy=False)
     operator_payment_id = fields.Many2one('account.payment', string="Operator Payment Record", readonly=True, copy=False)
     note = fields.Text()
+    photo = fields.Binary(attachment=True, help="Photo taken in the field.")
+    source = fields.Selection(
+        [('office', "Office"), ('field', "Field App")], default='office', readonly=True, copy=False)
+    cl_client_uuid = fields.Char(
+        string="Field App ID", readonly=True, copy=False,
+        help="Identifier given by the field app; a record sent twice is only created once.")
 
+    _cl_client_uuid_uniq = models.UniqueIndex(
+        '(cl_client_uuid) WHERE cl_client_uuid IS NOT NULL', "This field record was already received.")
     _quantity_positive = models.Constraint('CHECK(quantity >= 0)', "The quantity cannot be negative.")
     _price_positive = models.Constraint('CHECK(price_unit >= 0)', "The rate cannot be negative.")
     _operator_positive = models.Constraint(

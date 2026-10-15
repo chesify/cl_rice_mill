@@ -68,6 +68,7 @@ and settle with them.
         'views/cl_rice_settlement_views.xml',
         'views/cl_rice_opening_balance_views.xml',
         'views/cl_rice_report_cash_book_views.xml',
+        'views/cl_rice_field_app_templates.xml',
         'views/cl_rice_menus.xml',
     ],
     'post_init_hook': '_cl_rice_post_init',

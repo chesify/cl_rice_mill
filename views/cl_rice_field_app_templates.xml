@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="field_app_page" name="Rice Mill Field App">&lt;!DOCTYPE html&gt;
+<html lang="en">
+    <head>
+        <meta charset="utf-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1"/>
+        <meta name="theme-color" content="#2e7d32"/>
+        <title>Rice Field App</title>
+        <link rel="manifest" href="/rice/field/manifest.webmanifest"/>
+        <link rel="icon" href="/cl_rice_mill/static/description/icon.png"/>
+        <link rel="stylesheet" href="/cl_rice_mill/static/src/field_app/field_app.css"/>
+    </head>
+    <body>
+        <header class="o_cl_rice_field_header">
+            <strong>Rice Field App</strong>
+            <span id="o_cl_rice_field_net" class="o_cl_rice_field_badge">...</span>
+        </header>
+        <nav class="o_cl_rice_field_tabs">
+            <button type="button" data-tab="service" class="active">Record Service</button>
+            <button type="button" data-tab="farmer">Register Farmer</button>
+            <button type="button" data-tab="outbox">Outbox <span id="o_cl_rice_field_count">0</span></button>
+        </nav>
+        <main>
+            <form id="o_cl_rice_field_service" class="o_cl_rice_field_panel" data-panel="service">
+                <label>Farmer<select name="farmer_season_id" required="required"></select></label>
+                <label>Service<select name="service_type" required="required"></select></label>
+                <label>Machine<select name="vehicle_id"><option value="">-</option></select></label>
+                <label>Operator<select name="operator_id"><option value="">-</option></select></label>
+                <label>Acres / hours / trips<input name="quantity" type="number" step="0.1" min="0" required="required"/></label>
+                <label>Fuel used (litres)<input name="fuel_litres" type="number" step="0.1" min="0"/></label>
+                <label>Date<input name="date" type="date" required="required"/></label>
+                <label>Photo (optional)<input name="photo" type="file" accept="image/*" capture="environment"/></label>
+                <label>Note<textarea name="note" rows="2"></textarea></label>
+                <button type="submit" class="o_cl_rice_field_primary">Save</button>
+            </form>
+            <form id="o_cl_rice_field_farmer" class="o_cl_rice_field_panel" data-panel="farmer" hidden="hidden">
+                <label>Full name<input name="name" required="required"/></label>
+                <label>Phone<input name="phone" type="tel"/></label>
+                <label>Village<input name="village"/></label>
+                <label>Ward<input name="ward"/></label>
+                <label>Acreage<input name="acreage" type="number" step="0.1" min="0"/></label>
+                <button type="button" id="o_cl_rice_field_gps">Use my location</button>
+                <input name="latitude" type="hidden"/>
+                <input name="longitude" type="hidden"/>
+                <p id="o_cl_rice_field_gps_status" class="o_cl_rice_field_muted"></p>
+                <button type="submit" class="o_cl_rice_field_primary">Save</button>
+            </form>
+            <section class="o_cl_rice_field_panel" data-panel="outbox" hidden="hidden">
+                <button type="button" id="o_cl_rice_field_sync" class="o_cl_rice_field_primary">Send now</button>
+                <ul id="o_cl_rice_field_outbox"></ul>
+            </section>
+            <p id="o_cl_rice_field_message" class="o_cl_rice_field_muted"></p>
+        </main>
+        <script src="/cl_rice_mill/static/src/field_app/field_app.js"></script>
+    </body>
+</html>
+    </template>
+
+    <record id="cl_rice_field_app_action" model="ir.actions.act_url">
+        <field name="name">Field App</field>
+        <field name="url">/rice/field/</field>
+        <field name="target">self</field>
+    </record>
+</odoo>
