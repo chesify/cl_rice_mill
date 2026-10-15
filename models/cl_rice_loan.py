@@ -1,5 +1,3 @@
-from dateutil.relativedelta import relativedelta
-
 from odoo import api, fields, models
 from odoo.exceptions import AccessError, UserError
 
@@ -13,7 +11,7 @@ LOAN_TYPES = [
 
 class ClRiceLoan(models.Model):
     _name = 'cl.rice.loan'
-    _description = "Farmer Loan (Mkopo)"
+    _description = "Farmer Loan"
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'date desc, id desc'
     _check_company_auto = True
@@ -43,17 +41,6 @@ class ClRiceLoan(models.Model):
         ],
         default='draft', required=True, tracking=True, copy=False, index=True)
 
-    # interest terms, copied from the company configuration when the loan is created
-    interest_mode = fields.Selection(
-        [('none', "No interest"), ('flat', "Flat % per loan"), ('monthly', "Simple monthly %")],
-        readonly=True, copy=False)
-    interest_rate = fields.Float(string="Interest Rate (%)", digits=(16, 4), readonly=True, copy=False)
-    interest_accrual = fields.Selection(
-        [('cron', "Accrue monthly (scheduled)"), ('settlement', "Calculate at settlement")],
-        readonly=True, copy=False)
-    interest_ids = fields.One2many('cl.rice.loan.interest', 'loan_id', string="Interest")
-    interest_total = fields.Monetary(compute='_compute_interest_total', store=True)
-
     # approval
     over_limit = fields.Boolean(compute='_compute_over_limit', help="The loan takes the farmer over the credit limit.")
     approved_uid = fields.Many2one('res.users', string="Approved By", readonly=True, copy=False, tracking=True)
@@ -74,11 +61,6 @@ class ClRiceLoan(models.Model):
 
     _amount_positive = models.Constraint('CHECK(amount > 0)', "The loan amount must be positive.")
 
-    @api.depends('interest_ids.amount')
-    def _compute_interest_total(self):
-        for loan in self:
-            loan.interest_total = sum(loan.interest_ids.mapped('amount'))
-
     @api.depends('amount', 'state', 'farmer_season_id.credit_limit')
     def _compute_over_limit(self):
         for loan in self:
@@ -97,14 +79,6 @@ class ClRiceLoan(models.Model):
             company = fs.company_id or self.env.company
             if vals.get('name', self.env._("New")) == self.env._("New"):
                 vals['name'] = self.env['ir.sequence'].with_company(company).next_by_code('cl.rice.loan') or '/'
-            if vals.get('loan_type') != 'carry_forward':
-                vals.update({
-                    'interest_mode': company.cl_rice_interest_mode,
-                    'interest_rate': company.cl_rice_interest_rate,
-                    'interest_accrual': company.cl_rice_interest_accrual,
-                })
-            else:
-                vals.update({'interest_mode': 'none', 'interest_rate': 0.0})
         loans = super().create(vals_list)
         loans.farmer_season_id._cl_check_open()
         return loans
@@ -218,8 +192,6 @@ class ClRiceLoan(models.Model):
             'payment_id': payment.id,
             'disbursement_date': payment.date,
         })
-        if self.interest_mode == 'flat' and self.interest_rate:
-            self._cl_post_interest([('FLAT', self.currency_id.round(self.amount * self.interest_rate / 100.0))])
         self.message_post(body=self.env._(
             "Loan of %(amount)s disbursed by %(user)s from %(journal)s.",
             amount=self.currency_id.format(self.amount), user=self.env.user.name, journal=self.journal_id.name))
@@ -255,7 +227,7 @@ class ClRiceLoan(models.Model):
         if self.state != 'disbursed':
             raise UserError(self.env._("Only disbursed loans can be reversed."))
         self.farmer_season_id._cl_check_open()
-        moves = self.payment_id.move_id | self.move_id | self.interest_ids.move_id
+        moves = self.payment_id.move_id | self.move_id
         moves = moves.filtered(lambda m: m.state == 'posted')
         if moves:
             moves.line_ids.remove_move_reconcile()
@@ -276,91 +248,6 @@ class ClRiceLoan(models.Model):
             'approve_over_limit': self._cl_approve,
             'reverse': self._cl_reverse,
         }
-
-    # ------------------------------------------------------------------
-    # Interest
-    # ------------------------------------------------------------------
-    def _cl_post_interest(self, periods):
-        """Post interest for (period key, amount) pairs not posted yet. Returns the new interest records."""
-        self.ensure_one()
-        company = self.company_id
-        if not company.cl_rice_interest_income_account_id or not company.cl_rice_loan_journal_id:
-            raise UserError(self.env._("Set the interest income account and the loans journal in the Rice Mill settings."))
-        done = set(self.interest_ids.mapped('period'))
-        periods = [(key, amount) for key, amount in periods if key not in done and amount > 0]
-        if not periods:
-            return self.env['cl.rice.loan.interest']
-        fs = self.farmer_season_id
-        distribution = fs._cl_analytic_distribution(self.env.ref('cl_rice_mill.analytic_service_interest'))
-        line_vals = []
-        for key, amount in periods:
-            label = self.env._("Interest %(period)s on loan %(loan)s", period=key, loan=self.name)
-            line_vals += [
-                {
-                    'name': label,
-                    'account_id': company.cl_rice_loan_account_id.id,
-                    'partner_id': self.partner_id.id,
-                    'debit': amount,
-                    'cl_farmer_season_id': fs.id,
-                },
-                {
-                    'name': label,
-                    'account_id': company.cl_rice_interest_income_account_id.id,
-                    'partner_id': self.partner_id.id,
-                    'credit': amount,
-                    'analytic_distribution': distribution,
-                },
-            ]
-        move = self.env['account.move'].sudo().create({
-            'move_type': 'entry',
-            'journal_id': company.cl_rice_loan_journal_id.id,
-            'date': fields.Date.context_today(self),
-            'ref': self.env._("Interest on loan %s", self.name),
-            'cl_farmer_season_id': fs.id,
-            'company_id': company.id,
-            'line_ids': [(0, 0, vals) for vals in line_vals],
-        })
-        move.action_post()
-        return self.env['cl.rice.loan.interest'].create([
-            {'loan_id': self.id, 'period': key, 'amount': amount, 'move_id': move.id}
-            for key, amount in periods
-        ])
-
-    def _cl_monthly_interest_periods(self, until, started_months=False):
-        """Monthly interest periods due until ``until``.
-
-        :param started_months: count a started month as a full month (used at settlement);
-            otherwise only complete months are counted (used by the monthly accrual).
-        """
-        self.ensure_one()
-        if self.interest_mode != 'monthly' or not self.interest_rate or not self.disbursement_date:
-            return []
-        start = self.disbursement_date
-        months = (until.year - start.year) * 12 + until.month - start.month
-        if start + relativedelta(months=months) > until:
-            months -= 1
-        if started_months and start + relativedelta(months=months) < until:
-            months += 1
-        months = max(months, 0)
-        monthly = self.currency_id.round(self.amount * self.interest_rate / 100.0)
-        return [(f"M{index:02d}", monthly) for index in range(1, months + 1)]
-
-    @api.model
-    def _cron_accrue_interest(self):
-        today = fields.Date.context_today(self)
-        loans = self.search([
-            ('state', '=', 'disbursed'),
-            ('interest_mode', '=', 'monthly'),
-            ('interest_accrual', '=', 'cron'),
-            ('farmer_season_id.state', 'not in', ('settled', 'closed')),
-        ])
-        for loan in loans:
-            loan._cl_post_interest(loan._cl_monthly_interest_periods(today))
-
-    def _cl_accrue_interest_at_settlement(self, date):
-        for loan in self.filtered(lambda l: l.state == 'disbursed' and l.interest_mode == 'monthly'):
-            loan._cl_post_interest(loan._cl_monthly_interest_periods(date, started_months=True))
-
 
     def action_open_payment(self):
         self.ensure_one()

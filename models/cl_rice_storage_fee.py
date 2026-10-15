@@ -43,12 +43,18 @@ class ClRiceStorageFee(models.Model):
     @api.model
     def _cron_charge_storage(self, date=None):
         date = date or fields.Date.context_today(self)
-        for company in self.env['res.company'].search([('cl_rice_storage_rate', '>', 0)]):
+        companies = self.env['res.company'].search([
+            ('cl_rice_storage_enabled', '=', True),
+            ('cl_rice_storage_rate', '>', 0),
+        ])
+        for company in companies:
             self.with_company(company)._cl_charge_company(company, date)
 
     @api.model
     def _cl_charge_company(self, company, date):
         """Charge the storage of the month of ``date`` on every owned lot past its free period."""
+        if not company.cl_rice_storage_enabled:
+            return self
         period = date.strftime('%Y-%m')
         locations = company._cl_rice_store_locations()
         if not locations:

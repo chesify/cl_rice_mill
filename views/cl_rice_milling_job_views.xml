@@ -51,7 +51,7 @@
                             <field name="mode" widget="radio" readonly="state != 'draft'"/>
                             <field name="farmer_season_id" invisible="mode != 'farmer'"
                                    required="mode == 'farmer'" readonly="state != 'draft'"/>
-                            <field name="partner_id" invisible="mode == 'mill'" required="mode == 'walkin'"
+                            <field name="partner_id" required="mode == 'walkin'"
                                    readonly="state != 'draft' or mode == 'farmer'"/>
                             <field name="paddy_product_id" readonly="state != 'draft'"/>
                             <field name="input_lot_id" readonly="state not in ('draft', 'in_progress')"/>
@@ -99,21 +99,21 @@
                             <field name="total_recovery_pct"/>
                         </group>
                     </group>
-                    <group string="Charge" name="charge" invisible="mode == 'mill'">
+                    <group string="Charge" name="charge">
                         <group>
                             <field name="currency_id" invisible="1"/>
                             <field name="rate_id" readonly="state == 'done'"/>
                             <field name="price_unit" readonly="state == 'done'"/>
                             <field name="fee_basis_qty"/>
                             <field name="fee_amount" class="fw-bold"/>
-                            <field name="byproduct_credit" invisible="not byproduct_credit"/>
+                            <field name="byproducts_pay_fee" invisible="not byproducts_pay_fee"/>
+                            <field name="byproduct_value"/>
                         </group>
                         <group>
                             <field name="payment_journal_id" invisible="mode != 'walkin'"
                                    required="mode == 'walkin' and state != 'done'" readonly="state == 'done'"/>
                             <field name="invoice_id" groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
                             <field name="payment_id" invisible="not payment_id" groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
-                            <field name="credit_move_id" invisible="not credit_move_id" groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
                         </group>
                     </group>
                     <group invisible="state != 'done'" groups="stock.group_stock_user">
@@ -174,7 +174,7 @@
     </record>
 
     <record id="cl_rice_milling_job_action" model="ir.actions.act_window">
-        <field name="name">Milling Jobs (Kukoboa)</field>
+        <field name="name">Milling Jobs</field>
         <field name="res_model">cl.rice.milling.job</field>
         <field name="view_mode">list,form,pivot,graph</field>
         <field name="help" type="html">

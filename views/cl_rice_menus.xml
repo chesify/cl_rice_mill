@@ -5,47 +5,56 @@
               groups="cl_rice_mill.cl_rice_mill_group_user"/>
 
     <menuitem id="cl_rice_menu_farmers" name="Farmers" parent="cl_rice_menu_root" sequence="10"/>
-    <menuitem id="cl_rice_farmer_menu" name="Farmers (Wakulima)" parent="cl_rice_menu_farmers"
+    <menuitem id="cl_rice_season_menu" name="Seasons" parent="cl_rice_menu_farmers"
+              action="cl_rice_season_action" sequence="5"/>
+    <menuitem id="cl_rice_farmer_menu" name="Farmers" parent="cl_rice_menu_farmers"
               action="cl_rice_farmer_action" sequence="10"/>
     <menuitem id="cl_rice_farmer_season_menu" name="Farmer Seasons" parent="cl_rice_menu_farmers"
               action="cl_rice_farmer_season_action" sequence="20"/>
-    <menuitem id="cl_rice_farmer_group_menu" name="Farmer Groups (Vikundi)" parent="cl_rice_menu_farmers"
+    <menuitem id="cl_rice_farmer_group_menu" name="Farmer Groups" parent="cl_rice_menu_farmers"
               action="cl_rice_farmer_group_action" sequence="30"/>
 
     <menuitem id="cl_rice_menu_operations" name="Operations" parent="cl_rice_menu_root" sequence="20"/>
-    <menuitem id="cl_rice_menu_finance" name="Finance" parent="cl_rice_menu_root" sequence="30"
-              groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
     <menuitem id="cl_rice_service_job_menu" name="Service Jobs" parent="cl_rice_menu_operations"
               action="cl_rice_service_job_action" sequence="10"/>
     <menuitem id="cl_rice_intake_menu" name="Paddy Intake" parent="cl_rice_menu_operations"
               action="cl_rice_intake_action" sequence="20"
               groups="cl_rice_mill.cl_rice_mill_group_warehouse,cl_rice_mill.cl_rice_mill_group_accountant"/>
-    <menuitem id="cl_rice_milling_job_menu" name="Milling (Kukoboa)" parent="cl_rice_menu_operations"
+    <menuitem id="cl_rice_milling_job_menu" name="Milling" parent="cl_rice_menu_operations"
               action="cl_rice_milling_job_action" sequence="30"
               groups="cl_rice_mill.cl_rice_mill_group_mill_operator,cl_rice_mill.cl_rice_mill_group_accountant"/>
-    <menuitem id="cl_rice_lot_menu" name="Farmer Lots" parent="cl_rice_menu_operations"
-              action="cl_rice_lot_action" sequence="40"
+    <menuitem id="cl_rice_facilitated_sale_menu" name="Sales and Releases" parent="cl_rice_menu_operations"
+              action="cl_rice_facilitated_sale_action" sequence="40"/>
+    <menuitem id="cl_rice_stock_release_menu" name="Stock Releases" parent="cl_rice_menu_operations"
+              action="cl_rice_stock_release_action" sequence="45"
+              groups="cl_rice_mill.cl_rice_mill_group_warehouse,cl_rice_mill.cl_rice_mill_group_accountant"/>
+    <menuitem id="cl_rice_lot_menu" name="Lots" parent="cl_rice_menu_operations"
+              action="cl_rice_lot_action" sequence="50"
               groups="cl_rice_mill.cl_rice_mill_group_warehouse,cl_rice_mill.cl_rice_mill_group_mill_operator,cl_rice_mill.cl_rice_mill_group_accountant"/>
+
+    <menuitem id="cl_rice_menu_finance" name="Money" parent="cl_rice_menu_root" sequence="30"
+              groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
+    <menuitem id="cl_rice_loan_menu" name="Loans" parent="cl_rice_menu_finance"
+              action="cl_rice_loan_action" sequence="10"/>
+    <menuitem id="cl_rice_farmer_payment_menu" name="Payments Received" parent="cl_rice_menu_finance"
+              action="cl_rice_farmer_payment_action" sequence="20"/>
     <menuitem id="cl_rice_storage_fee_menu" name="Storage Fees" parent="cl_rice_menu_finance"
               action="cl_rice_storage_fee_action" sequence="30"/>
     <menuitem id="cl_rice_settlement_menu" name="Settlements" parent="cl_rice_menu_finance"
               action="cl_rice_settlement_action" sequence="40"/>
-    <menuitem id="cl_rice_proceeds_menu" name="Farmer Sale Proceeds" parent="cl_rice_menu_finance"
-              action="cl_rice_proceeds_action" sequence="50"/>
-    <menuitem id="cl_rice_ownership_transfer_menu" name="Crop Bought from Farmers" parent="cl_rice_menu_finance"
-              action="cl_rice_ownership_transfer_action" sequence="60"/>
-    <menuitem id="cl_rice_sale_menu" name="Sales Orders" parent="cl_rice_menu_finance"
-              action="sale.action_orders" sequence="20"/>
-    <menuitem id="cl_rice_loan_menu" name="Loans (Mikopo)" parent="cl_rice_menu_finance"
-              action="cl_rice_loan_action" sequence="10"/>
+    <menuitem id="cl_rice_opening_balance_menu" name="Opening Balances" parent="cl_rice_menu_finance"
+              action="cl_rice_opening_balance_action" sequence="90" groups="cl_rice_mill.cl_rice_mill_group_manager"/>
+
     <menuitem id="cl_rice_menu_reporting" name="Reporting" parent="cl_rice_menu_root" sequence="80"/>
+    <menuitem id="cl_rice_cash_book_menu" name="Cash Book" parent="cl_rice_menu_reporting"
+              action="cl_rice_report_cash_book_action" sequence="10" groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
 
     <menuitem id="cl_rice_menu_config" name="Configuration" parent="cl_rice_menu_root" sequence="90"
               groups="cl_rice_mill.cl_rice_mill_group_manager"/>
     <menuitem id="cl_rice_config_settings_menu" name="Settings" parent="cl_rice_menu_config"
               action="cl_rice_config_settings_action" sequence="1" groups="base.group_system"/>
-    <menuitem id="cl_rice_season_menu" name="Seasons (Misimu)" parent="cl_rice_menu_farmers"
-              action="cl_rice_season_action" sequence="5"/>
+    <menuitem id="cl_rice_setup_menu" name="Setup Wizard" parent="cl_rice_menu_config"
+              action="cl_rice_setup_action" sequence="2" groups="base.group_system"/>
     <menuitem id="cl_rice_service_rate_menu" name="Service Rates" parent="cl_rice_menu_config"
               action="cl_rice_service_rate_action" sequence="20"/>
     <menuitem id="cl_rice_machine_menu" name="Machines and Vehicles" parent="cl_rice_menu_config"

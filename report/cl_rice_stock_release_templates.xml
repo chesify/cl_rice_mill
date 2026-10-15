@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_gate_pass_document">
+        <t t-call="web.external_layout">
+            <t t-set="release" t-value="doc"/>
+            <div class="page o_cl_rice_gate_pass">
+                <h2>Gate Pass <span t-field="release.name"/></h2>
+                <p class="text-muted">This vehicle is allowed to leave the warehouse with the goods below.</p>
+                <table class="table table-sm table-bordered mt-3">
+                    <tbody>
+                        <tr><th class="w-25">Farmer</th>
+                            <td><span t-field="release.partner_id.name"/> (<span t-field="release.partner_id.cl_farmer_code"/>)</td></tr>
+                        <tr><th>Buyer</th><td><span t-field="release.buyer_id.name"/></td></tr>
+                        <tr><th>Product</th><td><span t-field="release.product_id.name"/></td></tr>
+                        <tr><th>Lot</th><td><span t-field="release.lot_id.name"/></td></tr>
+                        <tr><th>Bags</th><td><span t-field="release.bags"/></td></tr>
+                        <tr><th>Weight (kg)</th><td><span t-field="release.quantity"/></td></tr>
+                        <tr><th>Vehicle Plate</th><td><span t-field="release.vehicle_plate"/></td></tr>
+                        <tr><th>Driver</th><td><span t-field="release.driver_name"/></td></tr>
+                        <tr><th>Authorised By</th><td><span t-field="release.cleared_uid.name"/></td></tr>
+                        <tr><th>Date</th><td><span t-field="release.cleared_date"/></td></tr>
+                    </tbody>
+                </table>
+                <p t-if="release.clearance_basis == 'override'" class="mt-2">
+                    <strong>Released on manager override:</strong> <span t-field="release.override_reason"/>
+                </p>
+                <div class="row mt-5">
+                    <div class="col-4 text-center">
+                        <div class="border-top pt-1">Warehouse Officer</div>
+                    </div>
+                    <div class="col-4 text-center">
+                        <div class="border-top pt-1">Driver</div>
+                    </div>
+                    <div class="col-4 text-center">
+                        <div class="border-top pt-1">Gate / Security</div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <template id="report_gate_pass">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="cl_rice_mill.report_gate_pass_document"/>
+            </t>
+        </t>
+    </template>
+</odoo>

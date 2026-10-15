@@ -65,7 +65,7 @@
                                    required="negative_policy == 'carry_forward' and net_amount &lt; 0 and state == 'draft'"/>
                             <field name="carry_loan_id" invisible="not carry_loan_id"/>
                         </group>
-                        <group string="Payout (Malipo)" invisible="net_amount &lt;= 0">
+                        <group string="Payout" invisible="net_amount &lt;= 0">
                             <field name="payout_method"/>
                             <field name="payout_journal_id" readonly="state not in ('draft', 'confirmed')"/>
                             <field name="payment_id" invisible="not payment_id"/>

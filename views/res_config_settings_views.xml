@@ -9,31 +9,15 @@
             <xpath expr="//form" position="inside">
                 <app data-string="Rice Mill" string="Rice Mill" name="cl_rice_mill" logo="/cl_rice_mill/static/description/icon.png">
                     <block title="Setup" name="cl_rice_setup_container">
-                        <setting id="cl_rice_setup" string="Accounts and Journals"
-                                 help="Create the rice mill accounts, journals and stock setup this company still misses.">
-                            <button name="action_cl_rice_setup_company" type="object" string="Set up Rice Mill"
+                        <setting id="cl_rice_setup" string="Rice Mill Setup"
+                                 help="Create the accounts, the cash, bank and mobile money journals and the warehouse partitions.">
+                            <button name="action_cl_rice_open_setup" type="object" string="Run Setup"
                                     class="btn-link" icon="oi-arrow-right"/>
                         </setting>
                     </block>
-                    <block title="Loans and Interest" name="cl_rice_loans_container">
-                        <setting id="cl_rice_interest" string="Interest" help="How interest is charged on farmer loans.">
-                            <div class="content-group">
-                                <div class="row mt8">
-                                    <label for="cl_rice_interest_mode" class="col-lg-5 o_light_label"/>
-                                    <field name="cl_rice_interest_mode"/>
-                                </div>
-                                <div class="row" invisible="cl_rice_interest_mode == 'none'">
-                                    <label for="cl_rice_interest_rate" class="col-lg-5 o_light_label"/>
-                                    <field name="cl_rice_interest_rate"/>
-                                </div>
-                                <div class="row" invisible="cl_rice_interest_mode != 'monthly'">
-                                    <label for="cl_rice_interest_accrual" class="col-lg-5 o_light_label"/>
-                                    <field name="cl_rice_interest_accrual"/>
-                                </div>
-                            </div>
-                        </setting>
+                    <block title="Loans" name="cl_rice_loans_container">
                         <setting id="cl_rice_credit" string="Credit Limit"
-                                 help="Acreage x expected yield x reference price x loan-to-value.">
+                                 help="Acreage x expected yield x reference price x loan-to-value. Loans carry no interest.">
                             <div class="content-group">
                                 <div class="row mt8">
                                     <label for="cl_rice_default_yield" class="col-lg-5 o_light_label"/>
@@ -50,57 +34,26 @@
                             </div>
                         </setting>
                     </block>
-                    <block title="Sales" name="cl_rice_sales_container">
-                        <setting id="cl_rice_sales_mode" string="Sales Mode"
-                                 help="Agent: the mill sells on behalf of the farmer for a commission. Owner: the mill buys the crop, then resells it.">
-                            <div class="content-group">
-                                <div class="row mt8">
-                                    <field name="cl_rice_sales_mode" widget="radio" class="col-lg-12"/>
-                                </div>
-                                <div class="row" invisible="cl_rice_sales_mode != 'agent'">
-                                    <label for="cl_rice_commission_type" class="col-lg-5 o_light_label"/>
-                                    <field name="cl_rice_commission_type"/>
-                                </div>
-                                <div class="row" invisible="cl_rice_sales_mode != 'agent'">
-                                    <label for="cl_rice_commission_value" class="col-lg-5 o_light_label"/>
-                                    <field name="cl_rice_commission_value"/>
-                                </div>
-                            </div>
-                        </setting>
+                    <block title="Milling" name="cl_rice_milling_container">
                         <setting id="cl_rice_byproducts" string="By-products"
-                                 help="Who gets the by-products of milling, and the credit per kg given to the farmer when the mill keeps them.">
+                                 help="Bran and husk always go to the mill's own stock. Broken rice is configurable.">
                             <div class="content-group">
                                 <div class="row mt8">
-                                    <label for="cl_rice_bran_policy" class="col-lg-5 o_light_label"/>
-                                    <field name="cl_rice_bran_policy"/>
-                                </div>
-                                <div class="row" invisible="cl_rice_bran_policy != 'kept'">
-                                    <label for="cl_rice_bran_value" class="col-lg-5 o_light_label"/>
-                                    <field name="cl_rice_bran_value"/>
-                                </div>
-                                <div class="row">
-                                    <label for="cl_rice_husk_policy" class="col-lg-5 o_light_label"/>
-                                    <field name="cl_rice_husk_policy"/>
-                                </div>
-                                <div class="row" invisible="cl_rice_husk_policy != 'kept'">
-                                    <label for="cl_rice_husk_value" class="col-lg-5 o_light_label"/>
-                                    <field name="cl_rice_husk_value"/>
+                                    <label for="cl_rice_byproduct_fee_policy" class="col-lg-5 o_light_label"/>
+                                    <field name="cl_rice_byproduct_fee_policy"/>
                                 </div>
                                 <div class="row">
                                     <label for="cl_rice_broken_policy" class="col-lg-5 o_light_label"/>
                                     <field name="cl_rice_broken_policy"/>
                                 </div>
-                                <div class="row" invisible="cl_rice_broken_policy != 'kept'">
-                                    <label for="cl_rice_broken_value" class="col-lg-5 o_light_label"/>
-                                    <field name="cl_rice_broken_value"/>
-                                </div>
                             </div>
                         </setting>
                     </block>
-                    <block title="Storage and Milling" name="cl_rice_storage_container">
+                    <block title="Storage" name="cl_rice_storage_container">
                         <setting id="cl_rice_storage" string="Storage Fees"
                                  help="Monthly storage fee charged on farmer stock after the free period.">
-                            <div class="content-group">
+                            <field name="cl_rice_storage_enabled"/>
+                            <div class="content-group" invisible="not cl_rice_storage_enabled">
                                 <div class="row mt8">
                                     <label for="cl_rice_storage_basis" class="col-lg-5 o_light_label"/>
                                     <field name="cl_rice_storage_basis"/>
@@ -113,7 +66,11 @@
                                     <label for="cl_rice_storage_free_days" class="col-lg-5 o_light_label"/>
                                     <field name="cl_rice_storage_free_days"/>
                                 </div>
-                                <div class="row">
+                            </div>
+                        </setting>
+                        <setting id="cl_rice_bags" string="Bags" help="Standard bag weights and the tare deducted at intake.">
+                            <div class="content-group">
+                                <div class="row mt8">
                                     <label for="cl_rice_paddy_bag_kg" class="col-lg-5 o_light_label"/>
                                     <field name="cl_rice_paddy_bag_kg"/>
                                 </div>
@@ -121,57 +78,36 @@
                                     <label for="cl_rice_rice_bag_kg" class="col-lg-5 o_light_label"/>
                                     <field name="cl_rice_rice_bag_kg"/>
                                 </div>
-                            </div>
-                        </setting>
-                        <setting id="cl_rice_cost_split" string="Milling Cost Split"
-                                 help="Relative value per kg of each output, used to split the cost of mill-owned paddy over the outputs.">
-                            <div class="content-group">
-                                <div class="row mt8">
-                                    <label for="cl_rice_split_rice" class="col-lg-5 o_light_label"/>
-                                    <field name="cl_rice_split_rice"/>
-                                </div>
                                 <div class="row">
-                                    <label for="cl_rice_split_broken" class="col-lg-5 o_light_label"/>
-                                    <field name="cl_rice_split_broken"/>
-                                </div>
-                                <div class="row">
-                                    <label for="cl_rice_split_bran" class="col-lg-5 o_light_label"/>
-                                    <field name="cl_rice_split_bran"/>
-                                </div>
-                                <div class="row">
-                                    <label for="cl_rice_split_husk" class="col-lg-5 o_light_label"/>
-                                    <field name="cl_rice_split_husk"/>
+                                    <label for="cl_rice_bag_tare" class="col-lg-5 o_light_label"/>
+                                    <field name="cl_rice_bag_tare"/>
                                 </div>
                             </div>
                         </setting>
                     </block>
-                    <block title="Warehouses" name="cl_rice_stock_container">
-                        <setting id="cl_rice_warehouses" string="Stores and Mill"
-                                 help="Paddy store (W1), rice store (W2), the mill location and the milling operations.">
+                    <block title="Warehouse" name="cl_rice_stock_container">
+                        <setting id="cl_rice_warehouse" string="Warehouse Partitions"
+                                 help="One warehouse with three partitions; rename the partitions on the locations.">
                             <div class="content-group">
                                 <div class="row mt8">
-                                    <label for="cl_rice_paddy_warehouse_id" class="col-lg-5 o_light_label"/>
-                                    <field name="cl_rice_paddy_warehouse_id"/>
+                                    <label for="cl_rice_warehouse_id" class="col-lg-5 o_light_label"/>
+                                    <field name="cl_rice_warehouse_id"/>
                                 </div>
                                 <div class="row">
-                                    <label for="cl_rice_rice_warehouse_id" class="col-lg-5 o_light_label"/>
-                                    <field name="cl_rice_rice_warehouse_id"/>
+                                    <label for="cl_rice_paddy_location_id" class="col-lg-5 o_light_label"/>
+                                    <field name="cl_rice_paddy_location_id"/>
                                 </div>
                                 <div class="row">
-                                    <label for="cl_rice_mill_location_id" class="col-lg-5 o_light_label"/>
-                                    <field name="cl_rice_mill_location_id"/>
+                                    <label for="cl_rice_rice_location_id" class="col-lg-5 o_light_label"/>
+                                    <field name="cl_rice_rice_location_id"/>
                                 </div>
                                 <div class="row">
-                                    <label for="cl_rice_consume_type_id" class="col-lg-5 o_light_label"/>
-                                    <field name="cl_rice_consume_type_id"/>
+                                    <label for="cl_rice_byproduct_location_id" class="col-lg-5 o_light_label"/>
+                                    <field name="cl_rice_byproduct_location_id"/>
                                 </div>
                                 <div class="row">
-                                    <label for="cl_rice_output_type_id" class="col-lg-5 o_light_label"/>
-                                    <field name="cl_rice_output_type_id"/>
-                                </div>
-                                <div class="row">
-                                    <label for="cl_rice_bag_tare" class="col-lg-5 o_light_label"/>
-                                    <field name="cl_rice_bag_tare"/>
+                                    <label for="cl_rice_released_location_id" class="col-lg-5 o_light_label"/>
+                                    <field name="cl_rice_released_location_id"/>
                                 </div>
                             </div>
                         </setting>
@@ -188,22 +124,14 @@
                                     <field name="cl_rice_service_account_id"/>
                                 </div>
                                 <div class="row">
-                                    <label for="cl_rice_proceeds_account_id" class="col-lg-5 o_light_label"/>
-                                    <field name="cl_rice_proceeds_account_id"/>
-                                </div>
-                                <div class="row">
-                                    <label for="cl_rice_clearing_account_id" class="col-lg-5 o_light_label"/>
-                                    <field name="cl_rice_clearing_account_id"/>
+                                    <label for="cl_rice_funds_held_account_id" class="col-lg-5 o_light_label"/>
+                                    <field name="cl_rice_funds_held_account_id"/>
                                 </div>
                             </div>
                         </setting>
                         <setting id="cl_rice_income_accounts" string="Income Accounts">
                             <div class="content-group">
                                 <div class="row mt8">
-                                    <label for="cl_rice_interest_income_account_id" class="col-lg-5 o_light_label"/>
-                                    <field name="cl_rice_interest_income_account_id"/>
-                                </div>
-                                <div class="row">
                                     <label for="cl_rice_tractor_income_account_id" class="col-lg-5 o_light_label"/>
                                     <field name="cl_rice_tractor_income_account_id"/>
                                 </div>
@@ -218,10 +146,6 @@
                                 <div class="row">
                                     <label for="cl_rice_milling_income_account_id" class="col-lg-5 o_light_label"/>
                                     <field name="cl_rice_milling_income_account_id"/>
-                                </div>
-                                <div class="row">
-                                    <label for="cl_rice_commission_income_account_id" class="col-lg-5 o_light_label"/>
-                                    <field name="cl_rice_commission_income_account_id"/>
                                 </div>
                                 <div class="row">
                                     <label for="cl_rice_byproduct_income_account_id" class="col-lg-5 o_light_label"/>

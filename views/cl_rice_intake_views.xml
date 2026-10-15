@@ -46,6 +46,7 @@
                             <field name="partner_id" readonly="state != 'draft' or intake_type == 'farmer'"/>
                             <field name="date" readonly="state != 'draft'"/>
                             <field name="warehouse_id" readonly="state != 'draft'"/>
+                            <field name="location_id" readonly="state != 'draft'"/>
                             <field name="company_id" invisible="1"/>
                         </group>
                         <group string="Weighing" name="weighing">
@@ -97,7 +98,7 @@
     </record>
 
     <record id="cl_rice_intake_action" model="ir.actions.act_window">
-        <field name="name">Paddy Intake (Mpunga)</field>
+        <field name="name">Paddy Intake</field>
         <field name="res_model">cl.rice.intake</field>
         <field name="view_mode">list,form</field>
         <field name="help" type="html">

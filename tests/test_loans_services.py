@@ -1,6 +1,3 @@
-from dateutil.relativedelta import relativedelta
-
-from odoo import fields
 from odoo.exceptions import AccessError, UserError
 from odoo.tests import tagged
 
@@ -74,39 +71,6 @@ class TestLoans(ClRiceCommon):
         loan.with_user(self.user_accountant).action_disburse()
         self.fs.invalidate_recordset()
         self.assertTrue(self.fs.over_limit)
-
-    def test_flat_interest(self):
-        self.company.write({'cl_rice_interest_mode': 'flat', 'cl_rice_interest_rate': 10.0})
-        loan = self._disburse(self._create_loan(self.fs, 300_000))
-        self.assertEqual(loan.interest_total, 30_000)
-        move = loan.interest_ids.move_id
-        income = move.line_ids.filtered(lambda l: l.account_id == self.company.cl_rice_interest_income_account_id)
-        self.assertEqual(income.credit, 30_000)
-        key = next(iter(income.analytic_distribution))
-        self.assertIn(str(self.fs.analytic_account_id.id), key.split(','))
-        self.assertEqual(len(income.analytic_line_ids), 1)
-        self.assertEqual(income.analytic_line_ids.amount, 30_000)
-        self.fs.invalidate_recordset()
-        self.assertEqual(self.fs.balance_owed, 330_000)
-
-    def test_monthly_interest_cron_is_idempotent(self):
-        self.company.write({
-            'cl_rice_interest_mode': 'monthly',
-            'cl_rice_interest_rate': 2.0,
-            'cl_rice_interest_accrual': 'cron',
-        })
-        loan = self._disburse(self._create_loan(self.fs, 1_000_000))
-        today = fields.Date.context_today(loan)
-        loan.disbursement_date = today - relativedelta(months=3, days=5)
-        Loan = self.env['cl.rice.loan']
-        Loan._cron_accrue_interest()
-        Loan._cron_accrue_interest()
-        self.assertEqual(loan.interest_ids.mapped('period'), ['M01', 'M02', 'M03'])
-        self.assertEqual(loan.interest_total, 60_000)
-        # at settlement the started fourth month is charged too
-        loan._cl_accrue_interest_at_settlement(today)
-        loan._cl_accrue_interest_at_settlement(today)
-        self.assertEqual(loan.interest_total, 80_000)
 
     def test_loan_reversal(self):
         loan = self._disburse(self._create_loan(self.fs, 200_000))

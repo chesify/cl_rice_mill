@@ -25,10 +25,6 @@ access_cl_rice_loan_field_officer,cl.rice.loan.field.officer,cl.rice.loan,cl_ric
 access_cl_rice_loan_accountant,cl.rice.loan.accountant,cl.rice.loan,cl_rice_mill_group_accountant,cru,
 access_cl_rice_loan_manager,cl.rice.loan.manager,cl.rice.loan,cl_rice_mill_group_manager,crud,
 cl_rice_loan_rule_company,cl.rice.loan multi-company,cl.rice.loan,,crud,"[('company_id', 'in', company_ids)]"
-access_cl_rice_loan_interest_field_officer,cl.rice.loan.interest.field.officer,cl.rice.loan.interest,cl_rice_mill_group_field_officer,r,"[('field_officer_id', '=', user.id)]"
-access_cl_rice_loan_interest_accountant,cl.rice.loan.interest.accountant,cl.rice.loan.interest,cl_rice_mill_group_accountant,cr,
-access_cl_rice_loan_interest_manager,cl.rice.loan.interest.manager,cl.rice.loan.interest,cl_rice_mill_group_manager,crud,
-cl_rice_loan_interest_rule_company,cl.rice.loan.interest multi-company,cl.rice.loan.interest,,crud,"[('company_id', 'in', company_ids)]"
 access_cl_rice_service_job_field_officer,cl.rice.service.job.field.officer,cl.rice.service.job,cl_rice_mill_group_field_officer,cru,"[('field_officer_id', '=', user.id)]"
 access_cl_rice_service_job_warehouse,cl.rice.service.job.warehouse,cl.rice.service.job,cl_rice_mill_group_warehouse,r,
 access_cl_rice_service_job_mill_operator,cl.rice.service.job.mill.operator,cl.rice.service.job,cl_rice_mill_group_mill_operator,r,
@@ -52,14 +48,6 @@ access_cl_rice_storage_fee_warehouse,cl.rice.storage.fee.warehouse,cl.rice.stora
 access_cl_rice_storage_fee_accountant,cl.rice.storage.fee.accountant,cl.rice.storage.fee,cl_rice_mill_group_accountant,r,
 access_cl_rice_storage_fee_manager,cl.rice.storage.fee.manager,cl.rice.storage.fee,cl_rice_mill_group_manager,crud,
 cl_rice_storage_fee_rule_company,cl.rice.storage.fee multi-company,cl.rice.storage.fee,,crud,"[('company_id', 'in', company_ids)]"
-access_cl_rice_proceeds_field_officer,cl.rice.proceeds.field.officer,cl.rice.proceeds,cl_rice_mill_group_field_officer,r,"[('field_officer_id', '=', user.id)]"
-access_cl_rice_proceeds_accountant,cl.rice.proceeds.accountant,cl.rice.proceeds,cl_rice_mill_group_accountant,r,
-access_cl_rice_proceeds_manager,cl.rice.proceeds.manager,cl.rice.proceeds,cl_rice_mill_group_manager,crud,
-cl_rice_proceeds_rule_company,cl.rice.proceeds multi-company,cl.rice.proceeds,,crud,"[('company_id', 'in', company_ids)]"
-access_cl_rice_ownership_transfer_warehouse,cl.rice.ownership.transfer.warehouse,cl.rice.ownership.transfer,cl_rice_mill_group_warehouse,r,
-access_cl_rice_ownership_transfer_accountant,cl.rice.ownership.transfer.accountant,cl.rice.ownership.transfer,cl_rice_mill_group_accountant,cru,
-access_cl_rice_ownership_transfer_manager,cl.rice.ownership.transfer.manager,cl.rice.ownership.transfer,cl_rice_mill_group_manager,crud,
-cl_rice_ownership_transfer_rule_company,cl.rice.ownership.transfer multi-company,cl.rice.ownership.transfer,,crud,"[('company_id', 'in', company_ids)]"
 access_cl_rice_settlement_field_officer,cl.rice.settlement.field.officer,cl.rice.settlement,cl_rice_mill_group_field_officer,r,"[('field_officer_id', '=', user.id)]"
 access_cl_rice_settlement_accountant,cl.rice.settlement.accountant,cl.rice.settlement,cl_rice_mill_group_accountant,cru,
 access_cl_rice_settlement_manager,cl.rice.settlement.manager,cl.rice.settlement,cl_rice_mill_group_manager,crud,
@@ -68,3 +56,27 @@ access_cl_rice_settlement_line_field_officer,cl.rice.settlement.line.field.offic
 access_cl_rice_settlement_line_accountant,cl.rice.settlement.line.accountant,cl.rice.settlement.line,cl_rice_mill_group_accountant,crud,
 cl_rice_settlement_line_rule_company,cl.rice.settlement.line multi-company,cl.rice.settlement.line,,crud,"[('company_id', 'in', company_ids)]"
 access_cl_rice_settlement_create_accountant,cl.rice.settlement.create.accountant,cl.rice.settlement.create,cl_rice_mill_group_accountant,crud,
+access_cl_rice_farmer_payment_field_officer,cl.rice.farmer.payment.field_officer,cl.rice.farmer.payment,cl_rice_mill_group_field_officer,r,"[('field_officer_id', '=', user.id)]"
+access_cl_rice_farmer_payment_accountant,cl.rice.farmer.payment.accountant,cl.rice.farmer.payment,cl_rice_mill_group_accountant,cru,
+access_cl_rice_farmer_payment_manager,cl.rice.farmer.payment.manager,cl.rice.farmer.payment,cl_rice_mill_group_manager,crud,
+cl_rice_farmer_payment_rule_company,cl.rice.farmer.payment multi-company,cl.rice.farmer.payment,,crud,"[('company_id', 'in', company_ids)]"
+access_cl_rice_facilitated_sale_field_officer,cl.rice.facilitated.sale.field_officer,cl.rice.facilitated.sale,cl_rice_mill_group_field_officer,cr,"[('field_officer_id', '=', user.id)]"
+access_cl_rice_facilitated_sale_warehouse,cl.rice.facilitated.sale.warehouse,cl.rice.facilitated.sale,cl_rice_mill_group_warehouse,cru,
+access_cl_rice_facilitated_sale_accountant,cl.rice.facilitated.sale.accountant,cl.rice.facilitated.sale,cl_rice_mill_group_accountant,cru,
+access_cl_rice_facilitated_sale_manager,cl.rice.facilitated.sale.manager,cl.rice.facilitated.sale,cl_rice_mill_group_manager,crud,
+cl_rice_facilitated_sale_rule_company,cl.rice.facilitated.sale multi-company,cl.rice.facilitated.sale,,crud,"[('company_id', 'in', company_ids)]"
+access_cl_rice_stock_release_field_officer,cl.rice.stock.release.field_officer,cl.rice.stock.release,cl_rice_mill_group_field_officer,r,"[('field_officer_id', '=', user.id)]"
+access_cl_rice_stock_release_warehouse,cl.rice.stock.release.warehouse,cl.rice.stock.release,cl_rice_mill_group_warehouse,cru,
+access_cl_rice_stock_release_accountant,cl.rice.stock.release.accountant,cl.rice.stock.release,cl_rice_mill_group_accountant,cru,
+access_cl_rice_stock_release_manager,cl.rice.stock.release.manager,cl.rice.stock.release,cl_rice_mill_group_manager,crud,
+cl_rice_stock_release_rule_company,cl.rice.stock.release multi-company,cl.rice.stock.release,,crud,"[('company_id', 'in', company_ids)]"
+access_cl_rice_opening_balance_accountant,cl.rice.opening.balance.accountant,cl.rice.opening.balance,cl_rice_mill_group_accountant,r,
+access_cl_rice_opening_balance_manager,cl.rice.opening.balance.manager,cl.rice.opening.balance,cl_rice_mill_group_manager,crud,
+cl_rice_opening_balance_rule_company,cl.rice.opening.balance multi-company,cl.rice.opening.balance,,crud,"[('company_id', 'in', company_ids)]"
+access_cl_rice_opening_balance_line_accountant,cl.rice.opening.balance.line.accountant,cl.rice.opening.balance.line,cl_rice_mill_group_accountant,r,
+access_cl_rice_opening_balance_line_manager,cl.rice.opening.balance.line.manager,cl.rice.opening.balance.line,cl_rice_mill_group_manager,crud,
+cl_rice_opening_balance_line_rule_company,cl.rice.opening.balance.line multi-company,cl.rice.opening.balance.line,,crud,"[('company_id', 'in', company_ids)]"
+access_cl_rice_report_cash_book_accountant,cl.rice.report.cash.book.accountant,cl.rice.report.cash.book,cl_rice_mill_group_accountant,r,
+access_cl_rice_report_cash_book_manager,cl.rice.report.cash.book.manager,cl.rice.report.cash.book,cl_rice_mill_group_manager,r,
+cl_rice_report_cash_book_rule_company,cl.rice.report.cash.book multi-company,cl.rice.report.cash.book,,crud,"[('company_id', 'in', company_ids)]"
+access_cl_rice_setup_system,cl.rice.setup.system,cl.rice.setup,base.group_system,crud,

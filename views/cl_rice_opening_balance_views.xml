@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="cl_rice_opening_balance_view_list" model="ir.ui.view">
+        <field name="name">cl.rice.opening.balance.view.list</field>
+        <field name="model">cl.rice.opening.balance</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="date"/>
+                <field name="season_id"/>
+                <field name="line_count" string="Farmers"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="debt_total"/>
+                <field name="state" widget="badge" decoration-success="state == 'posted'" decoration-muted="state == 'reversed'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="cl_rice_opening_balance_view_form" model="ir.ui.view">
+        <field name="name">cl.rice.opening.balance.view.form</field>
+        <field name="model">cl.rice.opening.balance</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_download_template" type="object" string="Download Template"
+                            invisible="state not in ('draft', 'validated')"/>
+                    <button name="action_import_file" type="object" string="Import File"
+                            invisible="state not in ('draft', 'validated') or not file"/>
+                    <button name="action_validate" type="object" string="Check"
+                            invisible="state not in ('draft', 'validated')"/>
+                    <button name="action_post" type="object" string="Post Opening Balances" class="btn-primary"
+                            invisible="state != 'validated'"
+                            confirm="Opening debts and stock are created for every farmer listed. Continue?"/>
+                    <button name="action_open_reverse" type="object" string="Reverse Batch" invisible="state != 'posted'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,validated,posted"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="season_id" readonly="state not in ('draft', 'validated')"/>
+                            <field name="date" readonly="state not in ('draft', 'validated')"/>
+                            <field name="file" filename="file_name" readonly="state not in ('draft', 'validated')"/>
+                            <field name="file_name" invisible="1"/>
+                            <field name="company_id" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="line_count" string="Farmers"/>
+                            <field name="error_count" decoration-danger="error_count &gt; 0"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="debt_total"/>
+                            <field name="paddy_kg_total"/>
+                            <field name="rice_kg_total"/>
+                        </group>
+                    </group>
+                    <div class="alert alert-warning" role="alert" invisible="not error_count">
+                        Some lines have errors: correct them in the grid (or in the file and import it again), then check again.
+                    </div>
+                    <field name="line_ids" readonly="state not in ('draft', 'validated')">
+                        <list editable="bottom" decoration-danger="error">
+                            <field name="sequence" widget="handle"/>
+                            <field name="farmer_code"/>
+                            <field name="farmer_name"/>
+                            <field name="phone" optional="show"/>
+                            <field name="village" optional="hide"/>
+                            <field name="partner_id" optional="show"/>
+                            <field name="currency_id" column_invisible="1"/>
+                            <field name="loan_amount" sum="Total"/>
+                            <field name="tractor_amount" sum="Total"/>
+                            <field name="harvester_amount" sum="Total"/>
+                            <field name="operator_amount" sum="Total" optional="show"/>
+                            <field name="storage_amount" sum="Total" optional="show"/>
+                            <field name="milling_amount" sum="Total" optional="show"/>
+                            <field name="other_amount" sum="Total" optional="show"/>
+                            <field name="debt_total" sum="Total"/>
+                            <field name="paddy_bags" sum="Total"/>
+                            <field name="paddy_kg" sum="Total"/>
+                            <field name="rice_bags" sum="Total" optional="show"/>
+                            <field name="rice_kg" sum="Total" optional="show"/>
+                            <field name="error"/>
+                            <field name="farmer_season_id" optional="hide"/>
+                        </list>
+                    </field>
+                    <field name="reversal_reason" invisible="not reversal_reason" readonly="1"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="cl_rice_opening_balance_action" model="ir.actions.act_window">
+        <field name="name">Opening Balances</field>
+        <field name="res_model">cl.rice.opening.balance</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Bring in the balances from the notebooks</p>
+            <p>Download the template, fill in what each farmer owes and the paddy or rice he has in the warehouse,
+                then import it, check it and post it.</p>
+        </field>
+    </record>
+</odoo>

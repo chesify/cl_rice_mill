@@ -8,7 +8,7 @@ class ResPartner(models.Model):
     _inherit = 'res.partner'
     _rec_names_search = ['complete_name', 'email', 'ref', 'vat', 'cl_farmer_code']
 
-    is_farmer = fields.Boolean(string="Is a Farmer (Mkulima)", index=True, tracking=True)
+    is_farmer = fields.Boolean(string="Is a Farmer", index=True, tracking=True)
     cl_farmer_code = fields.Char(string="Farmer Code", copy=False, readonly=True, index='btree_not_null')
     cl_farmer_state = fields.Selection(
         [('pending', "Pending Review"), ('approved', "Approved"), ('blocked', "Blocked")],
@@ -18,15 +18,15 @@ class ResPartner(models.Model):
         domain="[('share', '=', False)]")
     cl_nida_number = fields.Char(string="National ID (NIDA)", groups=SENSITIVE_GROUPS, copy=False)
     cl_whatsapp = fields.Char(string="WhatsApp Number")
-    cl_village = fields.Char(string="Village (Kijiji)")
-    cl_ward = fields.Char(string="Ward (Kata)")
-    cl_district = fields.Char(string="District (Wilaya)")
-    cl_region = fields.Char(string="Region (Mkoa)")
+    cl_village = fields.Char(string="Village")
+    cl_ward = fields.Char(string="Ward")
+    cl_district = fields.Char(string="District")
+    cl_region = fields.Char(string="Region")
     cl_farm_latitude = fields.Float(string="Farm Latitude", digits=(10, 7))
     cl_farm_longitude = fields.Float(string="Farm Longitude", digits=(10, 7))
     cl_total_acreage = fields.Float(string="Total Acreage", digits=(16, 2))
-    cl_farmer_group_id = fields.Many2one('cl.rice.farmer.group', string="Farmer Group (Kikundi)", index='btree_not_null')
-    cl_guarantor_id = fields.Many2one('res.partner', string="Guarantor (Mdhamini)")
+    cl_farmer_group_id = fields.Many2one('cl.rice.farmer.group', string="Farmer Group", index='btree_not_null')
+    cl_guarantor_id = fields.Many2one('res.partner', string="Guarantor")
     cl_next_of_kin = fields.Char(string="Next of Kin")
     cl_next_of_kin_phone = fields.Char(string="Next of Kin Phone")
     cl_payout_method = fields.Selection(
@@ -65,8 +65,6 @@ class ResPartner(models.Model):
     def create(self, vals_list):
         for vals in vals_list:
             if vals.get('is_farmer'):
-                if self.env['res.lang']._lang_get('sw'):
-                    vals.setdefault('lang', 'sw')
                 if not vals.get('cl_field_officer_id') and self.env.user._is_internal():
                     vals['cl_field_officer_id'] = self.env.uid
         partners = super().create(vals_list)
@@ -84,11 +82,12 @@ class ResPartner(models.Model):
         for partner in self.filtered(lambda p: not p.cl_farmer_code):
             company = partner.company_id or self.env.company
             partner.cl_farmer_code = Sequence.with_company(company).next_by_code('cl.rice.farmer')
-            # what farmers owe the mill is followed on the farmer service receivable
-            if company.cl_rice_service_account_id:
-                partner.with_company(company).sudo().property_account_receivable_id = (
-                    company.cl_rice_service_account_id
-                )
+            partner._cl_set_farmer_accounts(company)
+
+    def _cl_set_farmer_accounts(self, company):
+        """What farmers owe the mill is followed on the farmer service receivable."""
+        if company.cl_rice_service_account_id:
+            self.with_company(company).sudo().property_account_receivable_id = company.cl_rice_service_account_id
 
     def action_view_cl_farmer_seasons(self):
         self.ensure_one()

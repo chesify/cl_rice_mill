@@ -98,7 +98,6 @@ class ClRiceSettlement(models.Model):
                 raise UserError(self.env._("Only draft settlements can be recomputed."))
             fs = settlement.farmer_season_id
             fs._cl_check_open()
-            fs.loan_ids._cl_accrue_interest_at_settlement(settlement.date)
             settlement.line_ids.unlink()
             settlement.line_ids = [(0, 0, vals) for vals in settlement._cl_statement_lines()]
 
@@ -121,20 +120,17 @@ class ClRiceSettlement(models.Model):
         for loan in fs.loan_ids:
             for move in loan.payment_id.move_id | loan.move_id:
                 categories[move] = 'loan'
-            for move in loan.interest_ids.move_id:
-                categories[move] = 'interest'
         for job in fs.service_job_ids:
             categories[job.invoice_id] = 'service'
             categories[job.operator_move_id] = 'operator'
         for job in fs.milling_job_ids:
             categories[job.invoice_id] = 'milling'
-            categories[job.credit_move_id] = 'byproduct'
         for fee in fs.storage_fee_ids:
             categories[fee.invoice_id] = 'storage'
-        for proceeds in self.env['cl.rice.proceeds'].sudo().search([('farmer_season_id', '=', fs.id)]):
-            categories[proceeds.move_id] = 'proceeds'
-        for transfer in self.env['cl.rice.ownership.transfer'].sudo().search([('farmer_season_id', '=', fs.id)]):
-            categories[transfer.bill_id] = 'purchase'
+        for payment in fs.payment_ids:
+            categories[payment.move_id] = 'funds_held'
+        for line in self.env['cl.rice.opening.balance.line'].sudo().search([('farmer_season_id', '=', fs.id)]):
+            categories[line.move_id] = 'opening'
         return categories
 
     def _cl_statement_lines(self):
@@ -251,7 +247,7 @@ class ClRiceSettlement(models.Model):
         values['state'] = 'confirmed' if self.currency_id.compare_amounts(net, 0) > 0 else 'paid'
         self.write(values)
         fs.loan_ids.filtered(lambda l: l.state == 'disbursed').sudo().state = 'settled'
-        fs._cl_advance_state(('active', 'harvested', 'in_storage', 'sold'), 'settled')
+        fs._cl_advance_state(('active', 'harvested', 'in_storage', 'released'), 'settled')
         self.message_post(body=self.env._(
             "Settlement confirmed by %(user)s: earned %(earned)s, owed %(owed)s, net %(net)s.",
             user=self.env.user.name,
@@ -371,7 +367,7 @@ class ClRiceSettlement(models.Model):
             self.carry_loan_id.sudo().state = 'cancelled'
         fs = self.farmer_season_id
         fs.loan_ids.filtered(lambda l: l.state == 'settled').sudo().state = 'disbursed'
-        fs.sudo().with_context(cl_rice_unlock=True).state = self.previous_fs_state or 'sold'
+        fs.sudo().with_context(cl_rice_unlock=True).state = self.previous_fs_state or 'released'
         self.write({'state': 'reversed', 'reversal_reason': reason})
         message = self.env._(
             "Settlement reversed by %(user)s. Reason: %(reason)s", user=self.env.user.name, reason=reason)

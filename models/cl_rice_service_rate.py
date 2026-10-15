@@ -8,7 +8,7 @@ SERVICE_TYPES = [
     ('harvesting', "Harvesting"),
     ('transport', "Transport"),
     ('storage', "Storage"),
-    ('milling', "Milling (Kukoboa)"),
+    ('milling', "Milling"),
     ('bagging', "Bagging"),
     ('other', "Other"),
 ]
@@ -17,7 +17,7 @@ SERVICE_UNITS = [
     ('acre', "Acre"),
     ('hour', "Hour"),
     ('kg', "Kg"),
-    ('bag', "Bag (Gunia)"),
+    ('bag', "Bag"),
     ('trip', "Trip"),
     ('month', "Month"),
 ]

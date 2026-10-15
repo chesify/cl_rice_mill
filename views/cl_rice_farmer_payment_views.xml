@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="cl_rice_farmer_payment_view_list" model="ir.ui.view">
+        <field name="name">cl.rice.farmer.payment.view.list</field>
+        <field name="model">cl.rice.farmer.payment</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="state == 'cancelled'">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="partner_id"/>
+                <field name="payment_type"/>
+                <field name="payer_id" optional="show"/>
+                <field name="journal_id"/>
+                <field name="reference" optional="show"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="amount" sum="Total"/>
+                <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-success="state == 'posted'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="cl_rice_farmer_payment_view_form" model="ir.ui.view">
+        <field name="name">cl.rice.farmer.payment.view.form</field>
+        <field name="model">cl.rice.farmer.payment</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_post" type="object" string="Receive Payment" class="btn-primary"
+                            invisible="state != 'draft'" groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
+                    <button name="action_cancel" type="object" string="Cancel" invisible="state != 'draft'"/>
+                    <button name="action_open_reverse" type="object" string="Cancel Payment"
+                            invisible="state != 'posted'" groups="cl_rice_mill.cl_rice_mill_group_manager"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,posted"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="payment_type" widget="radio" readonly="state != 'draft'"/>
+                            <field name="farmer_season_id" readonly="state != 'draft'"/>
+                            <field name="partner_id"/>
+                            <field name="sale_id" invisible="payment_type != 'buyer'" readonly="state != 'draft'"/>
+                            <field name="payer_id" invisible="payment_type != 'buyer'"
+                                   required="payment_type == 'buyer'" readonly="state != 'draft'"/>
+                            <field name="company_id" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="amount" class="fw-bold" readonly="state != 'draft'"/>
+                            <field name="date" readonly="state != 'draft'"/>
+                            <field name="journal_id" readonly="state != 'draft'"/>
+                            <field name="reference"/>
+                            <field name="applied_amount" invisible="state != 'posted' or payment_type != 'repayment'"/>
+                        </group>
+                    </group>
+                    <div class="text-muted" invisible="payment_type != 'buyer'">
+                        Money paid by a buyer for the farmer is held for the farmer: it pays his balance before the
+                        stock is released, and the rest is paid out to him at settlement. It is never the mill's income.
+                    </div>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="cl_rice_farmer_payment_view_search" model="ir.ui.view">
+        <field name="name">cl.rice.farmer.payment.view.search</field>
+        <field name="model">cl.rice.farmer.payment</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="payer_id"/>
+                <field name="reference"/>
+                <filter name="repayment" string="Farmer Payments" domain="[('payment_type', '=', 'repayment')]"/>
+                <filter name="buyer" string="Buyer Payments" domain="[('payment_type', '=', 'buyer')]"/>
+                <separator/>
+                <filter name="date" string="Date" date="date"/>
+                <group>
+                    <filter name="group_journal" string="Received Into" context="{'group_by': 'journal_id'}"/>
+                    <filter name="group_date" string="Day" context="{'group_by': 'date:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="cl_rice_farmer_payment_action" model="ir.actions.act_window">
+        <field name="name">Payments Received</field>
+        <field name="res_model">cl.rice.farmer.payment</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Record money received</p>
+            <p>Payments by farmers reduce what they owe; payments by buyers are held for the farmer.</p>
+        </field>
+    </record>
+</odoo>

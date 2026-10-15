@@ -15,7 +15,7 @@
                 <field name="is_farmer" groups="cl_rice_mill.cl_rice_mill_group_user"/>
             </field>
             <page name="contact_addresses" position="before">
-                <page string="Farmer (Mkulima)" name="cl_rice_farmer" invisible="not is_farmer"
+                <page string="Farmer" name="cl_rice_farmer" invisible="not is_farmer"
                       groups="cl_rice_mill.cl_rice_mill_group_user">
                     <div class="mb-2" invisible="cl_farmer_state != 'pending'">
                         <button name="action_cl_approve_farmer" type="object" string="Approve Farmer" class="btn-primary"
@@ -44,7 +44,7 @@
                             <field name="cl_next_of_kin"/>
                             <field name="cl_next_of_kin_phone" widget="phone"/>
                         </group>
-                        <group string="Payouts (Malipo)" name="cl_rice_payout" groups="cl_rice_mill.cl_rice_mill_group_accountant">
+                        <group string="Payouts" name="cl_rice_payout" groups="cl_rice_mill.cl_rice_mill_group_accountant">
                             <field name="cl_payout_method"/>
                             <field name="cl_payout_phone" widget="phone"
                                    invisible="cl_payout_method not in ('mpesa', 'tigopesa', 'airtel')"/>
@@ -124,7 +124,7 @@
             Command.create({'view_mode': 'form', 'view_id': ref('base.view_partner_form')}),
         ]"/>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Register the first farmer (mkulima)</p>
+            <p class="o_view_nocontent_smiling_face">Register the first farmer</p>
         </field>
     </record>
 </odoo>

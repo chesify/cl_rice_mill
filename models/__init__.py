@@ -10,7 +10,6 @@ from . import account_move_line
 from . import fleet_vehicle
 from . import cl_rice_service_rate
 from . import cl_rice_loan
-from . import cl_rice_loan_interest
 from . import cl_rice_service_job
 from . import product_template
 from . import stock_lot
@@ -21,10 +20,10 @@ from . import stock_picking
 from . import cl_rice_intake
 from . import cl_rice_milling_job
 from . import cl_rice_storage_fee
-from . import sale_order
-from . import sale_order_line
-from . import stock_rule
-from . import cl_rice_proceeds
-from . import cl_rice_ownership_transfer
+from . import cl_rice_farmer_payment
+from . import cl_rice_facilitated_sale
+from . import cl_rice_stock_release
 from . import cl_rice_settlement
 from . import cl_rice_settlement_line
+from . import cl_rice_opening_balance
+from . import cl_rice_opening_balance_line

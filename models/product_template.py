@@ -1,15 +1,15 @@
 from odoo import fields, models
 
 RICE_PRODUCTS = [
-    ('paddy', "Paddy (Mpunga)"),
-    ('rice', "Milled Rice (Mchele)"),
+    ('paddy', "Paddy"),
+    ('rice', "Milled Rice"),
     ('broken', "Broken Rice"),
-    ('bran', "Bran (Pumba)"),
-    ('husk', "Husk (Makapi)"),
+    ('bran', "Bran"),
+    ('husk', "Husk"),
 ]
 
 # lot name suffix per rice product
-LOT_SUFFIX = {'paddy': 'MP', 'rice': 'MC', 'broken': 'MV', 'bran': 'PB', 'husk': 'MK'}
+LOT_SUFFIX = {'paddy': 'PD', 'rice': 'RC', 'broken': 'BR', 'bran': 'BN', 'husk': 'HK'}
 
 
 class ProductTemplate(models.Model):

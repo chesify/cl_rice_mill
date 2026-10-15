@@ -6,11 +6,11 @@ from .product_template import LOT_SUFFIX
 
 class ClRiceSeason(models.Model):
     _name = 'cl.rice.season'
-    _description = "Season (Msimu)"
+    _description = "Season"
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'date_start desc, id desc'
 
-    name = fields.Char(required=True, tracking=True, help="e.g. Msimu 2026/27")
+    name = fields.Char(required=True, tracking=True, help="e.g. Season 2026/27")
     code = fields.Char(
         required=True, tracking=True, size=8,
         help="Short code used in lot numbers, e.g. 2627.")

@@ -12,7 +12,6 @@
                 <field name="loan_type"/>
                 <field name="currency_id" column_invisible="1"/>
                 <field name="amount" sum="Total"/>
-                <field name="interest_total" sum="Total" optional="show"/>
                 <field name="disbursement_date" optional="show"/>
                 <field name="field_officer_id" widget="many2one_avatar_user" optional="hide"/>
                 <field name="over_limit" column_invisible="1"/>
@@ -34,7 +33,7 @@
                             invisible="state != 'draft'"/>
                     <button name="action_approve" type="object" string="Approve" class="btn-primary"
                             invisible="state != 'to_approve'" groups="cl_rice_mill.cl_rice_mill_group_manager"/>
-                    <button name="action_disburse" type="object" string="Disburse" class="btn-primary"
+                    <button name="action_disburse" type="object" string="Give Loan" class="btn-primary"
                             invisible="state != 'approved'" groups="cl_rice_mill.cl_rice_mill_group_accountant"
                             confirm="The money is paid out to the farmer and booked. Continue?"/>
                     <button name="action_open_reverse" type="object" string="Reverse"
@@ -68,10 +67,6 @@
                             <field name="company_id" invisible="1"/>
                             <field name="over_limit" invisible="1"/>
                             <field name="amount" readonly="state not in ('draft', 'to_approve')"/>
-                            <field name="interest_mode"/>
-                            <field name="interest_rate" invisible="interest_mode == 'none'"/>
-                            <field name="interest_accrual" invisible="interest_mode != 'monthly'"/>
-                            <field name="interest_total" invisible="interest_mode == 'none'"/>
                         </group>
                     </group>
                     <group string="Disbursement" name="disbursement" invisible="loan_type == 'carry_forward'">
@@ -89,19 +84,6 @@
                         <field name="approved_uid"/>
                         <field name="approval_reason" invisible="not approval_reason"/>
                     </group>
-                    <notebook>
-                        <page string="Interest" name="interest" invisible="interest_mode == 'none'">
-                            <field name="interest_ids" readonly="1">
-                                <list>
-                                    <field name="period"/>
-                                    <field name="date"/>
-                                    <field name="currency_id" column_invisible="1"/>
-                                    <field name="amount" sum="Total"/>
-                                    <field name="move_id"/>
-                                </list>
-                            </field>
-                        </page>
-                    </notebook>
                 </sheet>
                 <chatter/>
             </form>
@@ -132,12 +114,13 @@
     </record>
 
     <record id="cl_rice_loan_action" model="ir.actions.act_window">
-        <field name="name">Loans (Mikopo)</field>
+        <field name="name">Loans</field>
         <field name="res_model">cl.rice.loan</field>
         <field name="view_mode">list,form</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Record a loan request</p>
-            <p>Loans are approved by a manager, then disbursed in cash, by bank or mobile money.</p>
+            <p>Loans are interest-free advances: approved by a manager, paid in cash, by bank or mobile money,
+                and recovered at settlement.</p>
         </field>
     </record>
 </odoo>

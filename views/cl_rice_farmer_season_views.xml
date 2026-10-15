@@ -16,7 +16,7 @@
                 <field name="state" widget="badge"
                        decoration-info="state == 'draft'"
                        decoration-success="state in ('active', 'harvested', 'in_storage')"
-                       decoration-warning="state == 'sold'"
+                       decoration-warning="state == 'released'"
                        decoration-muted="state in ('settled', 'closed')"/>
                 <field name="company_id" groups="base.group_multi_company" optional="hide"/>
             </list>
@@ -29,21 +29,27 @@
         <field name="arch" type="xml">
             <form>
                 <header>
+                    <button name="action_give_loan" type="object" string="Give Loan" class="btn-primary"
+                            invisible="is_locked or state == 'draft'"/>
+                    <button name="action_record_service" type="object" string="Record Service"
+                            invisible="is_locked or state == 'draft'"/>
+                    <button name="action_receive_payment" type="object" string="Receive Payment"
+                            invisible="is_locked or state == 'draft'" groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
+                    <button name="action_release_stock" type="object" string="Release Stock"
+                            invisible="state not in ('harvested', 'in_storage', 'released')"
+                            groups="cl_rice_mill.cl_rice_mill_group_warehouse,cl_rice_mill.cl_rice_mill_group_accountant"/>
+                    <button name="action_open_settle" type="object" string="Pay Farmer"
+                            invisible="state not in ('released', 'in_storage', 'harvested', 'active')"
+                            groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
                     <button name="action_activate" type="object" string="Activate" class="btn-primary"
                             invisible="state != 'draft'"/>
                     <button name="action_mark_harvested" type="object" string="Mark Harvested"
                             invisible="state != 'active'"/>
-                    <button name="action_open_settle" type="object" string="Settle" class="btn-primary"
-                            invisible="state not in ('sold', 'in_storage', 'harvested', 'active')"
-                            groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
-                    <button name="action_buy_crop" type="object" string="Buy Crop"
-                            invisible="state not in ('harvested', 'in_storage', 'sold')"
-                            groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
                     <button name="action_open_credit_override" type="object" string="Override Credit Limit"
                             invisible="is_locked" groups="cl_rice_mill.cl_rice_mill_group_manager"/>
                     <button name="action_close" type="object" string="Close"
                             invisible="state != 'settled'" groups="cl_rice_mill.cl_rice_mill_group_manager"/>
-                    <field name="state" widget="statusbar" statusbar_visible="draft,active,harvested,in_storage,sold,settled"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,active,harvested,in_storage,released,settled"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -59,20 +65,23 @@
                         <button name="action_view_milling_jobs" type="object" class="oe_stat_button" icon="fa-cogs">
                             <field name="milling_count" widget="statinfo" string="Milling"/>
                         </button>
+                        <button name="action_view_sales" type="object" class="oe_stat_button" icon="fa-handshake-o">
+                            <field name="sale_count" widget="statinfo" string="Sales"/>
+                        </button>
                         <button name="action_view_settlements" type="object" class="oe_stat_button" icon="fa-balance-scale"
                                 invisible="not settlement_count">
                             <field name="settlement_count" widget="statinfo" string="Settlements"/>
                         </button>
                         <button name="action_view_journal_items" type="object" class="oe_stat_button" icon="fa-book"
-                                string="Account" groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
+                                string="Account" groups="account.group_account_readonly"/>
                     </div>
+                    <widget name="web_ribbon" title="Locked" bg_color="text-bg-secondary" invisible="not is_locked"/>
                     <div class="alert alert-danger mb-2" role="alert" invisible="not over_limit">
                         The farmer's exposure is above the credit limit.
                     </div>
                     <div class="alert alert-warning mb-2" role="alert" invisible="not low_cover">
                         The stock held covers too little of what the farmer owes.
                     </div>
-                    <widget name="web_ribbon" title="Locked" bg_color="text-bg-secondary" invisible="not is_locked"/>
                     <div class="oe_title">
                         <h1><field name="name"/></h1>
                     </div>
@@ -91,40 +100,21 @@
                             <field name="expected_production"/>
                         </group>
                     </group>
-                    <group string="Credit" name="credit">
+                    <group string="Balance" name="balance">
                         <group>
                             <field name="currency_id" invisible="1"/>
-                            <field name="reference_price"/>
-                            <field name="credit_limit_computed"/>
-                            <field name="credit_limit" class="fw-bold"/>
-                        </group>
-                        <group invisible="not credit_limit_override">
-                            <field name="credit_limit_override"/>
-                            <field name="credit_limit_override_uid"/>
-                            <field name="credit_limit_override_reason"/>
-                        </group>
-                    </group>
-                    <group string="Account (Hesabu)" name="figures">
-                        <group string="Charged" name="charged">
-                            <field name="loan_total"/>
-                            <field name="interest_total"/>
-                            <field name="service_total"/>
-                            <field name="operator_total"/>
-                            <field name="milling_total"/>
-                            <field name="storage_total"/>
-                            <field name="charges_total" class="fw-bold"/>
-                            <field name="byproduct_credit_total" invisible="not byproduct_credit_total"/>
-                        </group>
-                        <group string="Balance" name="balance">
-                            <field name="balance_owed"/>
-                            <field name="credits_due"/>
+                            <field name="balance_owed" class="fw-bold" decoration-danger="balance_owed &gt; 0"/>
+                            <field name="funds_held"/>
                             <field name="net_balance" class="fw-bold"
                                    decoration-danger="net_balance &lt; 0" decoration-success="net_balance &gt; 0"/>
+                        </group>
+                        <group>
+                            <field name="credit_limit"/>
                             <field name="exposure"/>
                             <field name="over_limit" invisible="1"/>
                         </group>
                     </group>
-                    <group string="Stock Held (Ghala)" name="stock">
+                    <group string="Stock Held" name="stock">
                         <group>
                             <label for="paddy_kg"/>
                             <div class="o_row">
@@ -142,6 +132,20 @@
                         </group>
                     </group>
                     <notebook>
+                        <page string="Charges" name="charges">
+                            <group>
+                                <group>
+                                    <field name="opening_total" invisible="not opening_total"/>
+                                    <field name="loan_total"/>
+                                    <field name="service_total"/>
+                                    <field name="operator_total"/>
+                                    <field name="milling_total"/>
+                                    <field name="storage_total"/>
+                                    <field name="charges_total" class="fw-bold"/>
+                                    <field name="paid_total"/>
+                                </group>
+                            </group>
+                        </page>
                         <page string="Loans" name="loans">
                             <field name="loan_ids" readonly="1">
                                 <list>
@@ -150,7 +154,6 @@
                                     <field name="loan_type"/>
                                     <field name="currency_id" column_invisible="1"/>
                                     <field name="amount" sum="Total"/>
-                                    <field name="interest_total" sum="Total"/>
                                     <field name="state" widget="badge"/>
                                 </list>
                             </field>
@@ -197,25 +200,28 @@
                                 </list>
                             </field>
                         </page>
-                        <page string="Sales (Mauzo)" name="sales">
-                            <field name="proceeds_ids" readonly="1">
-                                <list>
-                                    <field name="date"/>
-                                    <field name="invoice_id"/>
-                                    <field name="product_id"/>
-                                    <field name="quantity" sum="Total"/>
-                                    <field name="currency_id" column_invisible="1"/>
-                                    <field name="gross_amount" sum="Total"/>
-                                    <field name="commission_amount" sum="Total"/>
-                                    <field name="net_amount" sum="Total"/>
-                                </list>
-                            </field>
-                            <field name="transfer_ids" readonly="1" invisible="not transfer_ids">
+                        <page string="Sales and Releases" name="sales">
+                            <field name="facilitated_sale_ids" readonly="1">
                                 <list>
                                     <field name="name"/>
                                     <field name="date"/>
+                                    <field name="buyer_id"/>
                                     <field name="product_id"/>
                                     <field name="quantity" sum="Total"/>
+                                    <field name="released_qty" sum="Total"/>
+                                    <field name="payment_route"/>
+                                    <field name="state" widget="badge"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Payments" name="payments">
+                            <field name="payment_ids" readonly="1">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="date"/>
+                                    <field name="payment_type"/>
+                                    <field name="payer_id"/>
+                                    <field name="journal_id"/>
                                     <field name="currency_id" column_invisible="1"/>
                                     <field name="amount" sum="Total"/>
                                     <field name="state" widget="badge"/>
@@ -233,6 +239,19 @@
                                     <field name="amount" sum="Total"/>
                                 </list>
                             </field>
+                        </page>
+                        <page string="Credit" name="credit">
+                            <group>
+                                <group>
+                                    <field name="reference_price"/>
+                                    <field name="credit_limit_computed"/>
+                                </group>
+                                <group invisible="not credit_limit_override">
+                                    <field name="credit_limit_override"/>
+                                    <field name="credit_limit_override_uid"/>
+                                    <field name="credit_limit_override_reason"/>
+                                </group>
+                            </group>
                         </page>
                         <page string="Plots" name="plots">
                             <field name="plot_details" placeholder="Plot names, location, soil, irrigation..." readonly="is_locked"/>
@@ -285,7 +304,7 @@
         <field name="context">{'search_default_open': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Register a farmer for the season</p>
-            <p>The farmer season holds every loan, service, intake, milling, sale and the settlement of one farmer for one season.</p>
+            <p>The farmer season holds every loan, service, intake, milling, release, payment and the settlement of one farmer for one season.</p>
         </field>
     </record>
 </odoo>

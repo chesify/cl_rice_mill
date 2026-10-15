@@ -11,8 +11,9 @@ class StockPicking(models.Model):
 
         :param owner: owner of the stock moved (a farmer or walk-in customer), empty for the mill
         :param lines: list of dicts with ``product``, ``qty``, ``lot`` and optionally ``bags``,
-            ``owner`` (overrides the transfer owner for that line), ``value`` (value of a mill-owned
-            incoming line) and ``quants`` (source quants of an outgoing line)
+            ``owner`` (overrides the transfer owner for that line), ``location_dest`` (overrides the
+            destination for that line), ``value`` (value of a mill-owned incoming line) and ``quants``
+            (source quants of an outgoing line)
         :return: the done picking
         """
         Move = self.env['stock.move'].sudo()
@@ -29,7 +30,7 @@ class StockPicking(models.Model):
             'product_uom_qty': line['qty'],
             'uom_id': line['product'].uom_id.id,
             'location_id': location.id,
-            'location_dest_id': location_dest.id,
+            'location_dest_id': line.get('location_dest', location_dest).id,
             'picking_id': picking.id,
             'restrict_partner_id': line.get('owner', owner).id,
             'cl_lot_id': line['lot'].id,
@@ -71,7 +72,7 @@ class StockPicking(models.Model):
                     'lot_id': line['lot'].id,
                     'quantity': qty,
                     'location_id': source.id,
-                    'location_dest_id': location_dest.id,
+                    'location_dest_id': move.location_dest_id.id,
                     'owner_id': line_owner.id,
                     'cl_bags': bags,
                     'picked': True,

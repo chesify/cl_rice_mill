@@ -25,7 +25,6 @@ class TestFarmerSeason(ClRiceCommon):
     def test_farmer_registration(self):
         self.assertTrue(self.farmer.cl_farmer_code.startswith('F'))
         self.assertNotEqual(self.farmer.cl_farmer_code, self.farmer_2.cl_farmer_code)
-        self.assertEqual(self.farmer.lang, 'sw')
         self.assertEqual(
             self.farmer.with_company(self.company).property_account_receivable_id,
             self.company.cl_rice_service_account_id)

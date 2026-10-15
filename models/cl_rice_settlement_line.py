@@ -1,16 +1,14 @@
 from odoo import fields, models
 
 SETTLEMENT_CATEGORIES = [
-    ('loan', "Loan (Mkopo)"),
-    ('interest', "Interest (Riba)"),
+    ('loan', "Loan"),
     ('service', "Services"),
     ('operator', "Operators Paid"),
-    ('milling', "Milling (Kukoboa)"),
-    ('storage', "Storage (Ghala)"),
+    ('milling', "Milling"),
+    ('storage', "Storage"),
+    ('opening', "Opening Balance"),
     ('other_charge', "Other Charges"),
-    ('proceeds', "Sale Proceeds (Mauzo)"),
-    ('byproduct', "By-product Credit"),
-    ('purchase', "Crop Bought by the Mill"),
+    ('funds_held', "Funds Held for the Farmer"),
     ('other_credit', "Other Credits"),
 ]
 

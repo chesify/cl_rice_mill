@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="cl_rice_setup_view_form" model="ir.ui.view">
+        <field name="name">cl.rice.setup.view.form</field>
+        <field name="model">cl.rice.setup</field>
+        <field name="arch" type="xml">
+            <form>
+                <p>
+                    This creates what the rice mill needs to work: the farmer accounts (loans, services, funds held),
+                    the income accounts, the journals, the Cash, Bank, M-Pesa, Tigo Pesa and Airtel Money journals,
+                    and the warehouse with its Paddy, Milled Rice and By-products partitions.
+                    Nothing existing is changed; it can be run again safely.
+                </p>
+                <group>
+                    <field name="company_id" groups="base.group_multi_company"/>
+                    <field name="create_payment_journals"/>
+                    <field name="storage_enabled"/>
+                </group>
+                <footer>
+                    <button name="action_apply" type="object" string="Set Up" class="btn-primary"/>
+                    <button string="Cancel" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="cl_rice_setup_action" model="ir.actions.act_window">
+        <field name="name">Rice Mill Setup</field>
+        <field name="res_model">cl.rice.setup</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

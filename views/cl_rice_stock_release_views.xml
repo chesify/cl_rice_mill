@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="cl_rice_stock_release_view_list" model="ir.ui.view">
+        <field name="name">cl.rice.stock.release.view.list</field>
+        <field name="model">cl.rice.stock.release</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="state == 'cancelled'">
+                <field name="name"/>
+                <field name="sale_id"/>
+                <field name="partner_id"/>
+                <field name="buyer_id"/>
+                <field name="product_id"/>
+                <field name="quantity" sum="Total"/>
+                <field name="bags" sum="Total"/>
+                <field name="vehicle_plate" optional="show"/>
+                <field name="clearance_basis" optional="show"/>
+                <field name="cleared_date" optional="hide"/>
+                <field name="state" widget="badge" decoration-info="state == 'draft'"
+                       decoration-warning="state == 'cleared'" decoration-success="state == 'released'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="cl_rice_stock_release_view_form" model="ir.ui.view">
+        <field name="name">cl.rice.stock.release.view.form</field>
+        <field name="model">cl.rice.stock.release</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_clear" type="object" string="Clear for Release" class="btn-primary"
+                            invisible="state != 'draft'"
+                            groups="cl_rice_mill.cl_rice_mill_group_warehouse,cl_rice_mill.cl_rice_mill_group_accountant"/>
+                    <button name="action_open_override" type="object" string="Override Block"
+                            invisible="state != 'draft'" groups="cl_rice_mill.cl_rice_mill_group_manager"/>
+                    <button name="action_release" type="object" string="Release Stock" class="btn-primary"
+                            invisible="state != 'cleared'" groups="cl_rice_mill.cl_rice_mill_group_warehouse"
+                            confirm="The stock leaves the warehouse with the buyer. Continue?"/>
+                    <button name="action_print_gate_pass" type="object" string="Print Gate Pass"
+                            invisible="state not in ('cleared', 'released')"/>
+                    <button name="action_cancel" type="object" string="Cancel" invisible="state not in ('draft', 'cleared')"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,cleared,released"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="sale_id" readonly="state != 'draft'"/>
+                            <field name="partner_id"/>
+                            <field name="buyer_id"/>
+                            <field name="product_id"/>
+                            <field name="lot_id"/>
+                            <field name="payment_route"/>
+                            <field name="company_id" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="quantity" readonly="state != 'draft'"/>
+                            <field name="bags" readonly="state != 'draft'"/>
+                            <field name="vehicle_plate" readonly="state == 'released'"/>
+                            <field name="driver_name" readonly="state == 'released'"/>
+                        </group>
+                    </group>
+                    <group string="Clearance" invisible="state == 'draft'">
+                        <group>
+                            <field name="clearance_basis"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="balance_at_clearance"/>
+                            <field name="funds_applied" invisible="not funds_applied"/>
+                            <field name="override_reason" invisible="not override_reason"/>
+                        </group>
+                        <group>
+                            <field name="cleared_uid"/>
+                            <field name="cleared_date"/>
+                            <field name="released_uid" invisible="state != 'released'"/>
+                            <field name="released_date" invisible="state != 'released'"/>
+                            <field name="picking_id" invisible="not picking_id" groups="stock.group_stock_user"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="cl_rice_stock_release_view_search" model="ir.ui.view">
+        <field name="name">cl.rice.stock.release.view.search</field>
+        <field name="model">cl.rice.stock.release</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="buyer_id"/>
+                <field name="vehicle_plate"/>
+                <filter name="to_release" string="Cleared, Waiting" domain="[('state', '=', 'cleared')]"/>
+                <filter name="override" string="Manager Overrides" domain="[('clearance_basis', '=', 'override')]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="cl_rice_stock_release_action" model="ir.actions.act_window">
+        <field name="name">Stock Releases</field>
+        <field name="res_model">cl.rice.stock.release</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

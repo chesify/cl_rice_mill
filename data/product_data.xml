@@ -5,8 +5,8 @@
     </record>
 
     <record id="product_paddy" model="product.product">
-        <field name="name">Paddy (Mpunga)</field>
-        <field name="default_code">MPUNGA</field>
+        <field name="name">Paddy</field>
+        <field name="default_code">PADDY</field>
         <field name="type">consu</field>
         <field name="is_storable" eval="True"/>
         <field name="tracking">lot</field>
@@ -17,8 +17,8 @@
         <field name="purchase_ok" eval="True"/>
     </record>
     <record id="product_rice" model="product.product">
-        <field name="name">Milled Rice (Mchele)</field>
-        <field name="default_code">MCHELE</field>
+        <field name="name">Milled Rice</field>
+        <field name="default_code">RICE</field>
         <field name="type">consu</field>
         <field name="is_storable" eval="True"/>
         <field name="tracking">lot</field>
@@ -29,8 +29,8 @@
         <field name="purchase_ok" eval="True"/>
     </record>
     <record id="product_broken" model="product.product">
-        <field name="name">Broken Rice (Mchele Vipande)</field>
-        <field name="default_code">VIPANDE</field>
+        <field name="name">Broken Rice</field>
+        <field name="default_code">BROKEN</field>
         <field name="type">consu</field>
         <field name="is_storable" eval="True"/>
         <field name="tracking">lot</field>
@@ -41,8 +41,8 @@
         <field name="purchase_ok" eval="True"/>
     </record>
     <record id="product_bran" model="product.product">
-        <field name="name">Bran (Pumba)</field>
-        <field name="default_code">PUMBA</field>
+        <field name="name">Bran</field>
+        <field name="default_code">BRAN</field>
         <field name="type">consu</field>
         <field name="is_storable" eval="True"/>
         <field name="tracking">lot</field>
@@ -53,8 +53,8 @@
         <field name="purchase_ok" eval="True"/>
     </record>
     <record id="product_husk" model="product.product">
-        <field name="name">Husk (Makapi)</field>
-        <field name="default_code">MAKAPI</field>
+        <field name="name">Husk</field>
+        <field name="default_code">HUSK</field>
         <field name="type">consu</field>
         <field name="is_storable" eval="True"/>
         <field name="tracking">lot</field>

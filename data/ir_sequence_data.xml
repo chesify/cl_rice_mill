@@ -63,10 +63,34 @@
         <field name="use_date_range" eval="True"/>
         <field name="company_id" eval="False"/>
     </record>
-    <record id="seq_cl_rice_ownership_transfer" model="ir.sequence">
-        <field name="name">Crop Purchase</field>
-        <field name="code">cl.rice.ownership.transfer</field>
-        <field name="prefix">CP/%(range_year)s/</field>
+    <record id="seq_cl_rice_farmer_payment" model="ir.sequence">
+        <field name="name">Payment Received</field>
+        <field name="code">cl.rice.farmer.payment</field>
+        <field name="prefix">RC/%(range_year)s/</field>
+        <field name="padding">4</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="company_id" eval="False"/>
+    </record>
+    <record id="seq_cl_rice_facilitated_sale" model="ir.sequence">
+        <field name="name">Facilitated Sale</field>
+        <field name="code">cl.rice.facilitated.sale</field>
+        <field name="prefix">SA/%(range_year)s/</field>
+        <field name="padding">4</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="company_id" eval="False"/>
+    </record>
+    <record id="seq_cl_rice_stock_release" model="ir.sequence">
+        <field name="name">Stock Release</field>
+        <field name="code">cl.rice.stock.release</field>
+        <field name="prefix">RL/%(range_year)s/</field>
+        <field name="padding">4</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="company_id" eval="False"/>
+    </record>
+    <record id="seq_cl_rice_opening_balance" model="ir.sequence">
+        <field name="name">Opening Balance Import</field>
+        <field name="code">cl.rice.opening.balance</field>
+        <field name="prefix">OB/%(range_year)s/</field>
         <field name="padding">4</field>
         <field name="use_date_range" eval="True"/>
         <field name="company_id" eval="False"/>

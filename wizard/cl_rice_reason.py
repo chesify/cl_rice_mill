@@ -2,7 +2,10 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError
 
 # models whose records may be acted on through this wizard; each implements _cl_reason_actions()
-REASON_MODELS = ['cl.rice.farmer.season', 'cl.rice.loan', 'cl.rice.service.job', 'cl.rice.intake', 'cl.rice.settlement']
+REASON_MODELS = [
+    'cl.rice.farmer.season', 'cl.rice.loan', 'cl.rice.service.job', 'cl.rice.intake', 'cl.rice.settlement',
+    'cl.rice.farmer.payment', 'cl.rice.stock.release', 'cl.rice.opening.balance',
+]
 
 
 class ClRiceReason(models.TransientModel):

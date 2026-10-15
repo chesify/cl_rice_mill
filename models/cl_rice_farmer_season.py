@@ -17,11 +17,11 @@ class ClRiceFarmerSeason(models.Model):
     name = fields.Char(
         string="Reference", required=True, readonly=True, copy=False, default=lambda self: self.env._("New"))
     partner_id = fields.Many2one(
-        'res.partner', string="Farmer (Mkulima)", required=True, index=True, tracking=True,
+        'res.partner', string="Farmer", required=True, index=True, tracking=True,
         domain="[('is_farmer', '=', True), ('cl_farmer_state', '=', 'approved')]")
     farmer_code = fields.Char(related='partner_id.cl_farmer_code', string="Farmer Code")
     season_id = fields.Many2one(
-        'cl.rice.season', string="Season (Msimu)", required=True, index=True, tracking=True,
+        'cl.rice.season', string="Season", required=True, index=True, tracking=True,
         domain="[('state', '!=', 'closed'), ('company_id', '=', company_id)]")
     company_id = fields.Many2one('res.company', required=True, default=lambda self: self.env.company, index=True)
     currency_id = fields.Many2one(related='company_id.currency_id')
@@ -35,7 +35,7 @@ class ClRiceFarmerSeason(models.Model):
             ('active', "Active"),
             ('harvested', "Harvested"),
             ('in_storage', "In Storage"),
-            ('sold', "Sold"),
+            ('released', "Stock Released"),
             ('settled', "Settled"),
             ('closed', "Closed"),
         ],
@@ -73,17 +73,18 @@ class ClRiceFarmerSeason(models.Model):
     intake_ids = fields.One2many('cl.rice.intake', 'farmer_season_id', string="Intakes")
     milling_job_ids = fields.One2many('cl.rice.milling.job', 'farmer_season_id', string="Milling Jobs")
     storage_fee_ids = fields.One2many('cl.rice.storage.fee', 'farmer_season_id', string="Storage Fees")
+    facilitated_sale_ids = fields.One2many('cl.rice.facilitated.sale', 'farmer_season_id', string="Facilitated Sales")
+    payment_ids = fields.One2many('cl.rice.farmer.payment', 'farmer_season_id', string="Payments Received")
     lot_ids = fields.One2many('stock.lot', 'cl_farmer_season_id', string="Lots")
     settlement_ids = fields.One2many('cl.rice.settlement', 'farmer_season_id', string="Settlements")
-    proceeds_ids = fields.One2many('cl.rice.proceeds', 'farmer_season_id', string="Sale Proceeds")
-    transfer_ids = fields.One2many('cl.rice.ownership.transfer', 'farmer_season_id', string="Crop Bought by the Mill")
     settlement_count = fields.Integer(compute='_compute_document_counts')
     loan_count = fields.Integer(compute='_compute_document_counts')
     service_job_count = fields.Integer(compute='_compute_document_counts')
     intake_count = fields.Integer(compute='_compute_document_counts')
     milling_count = fields.Integer(compute='_compute_document_counts')
+    sale_count = fields.Integer(compute='_compute_document_counts')
 
-    # Stock held (farmer-owned, in the stores)
+    # Stock held (farmer-owned, in the warehouse)
     paddy_kg = fields.Float(string="Paddy Held (kg)", compute='_compute_stock_held', digits='Product Unit')
     paddy_bags = fields.Float(string="Paddy Bags", compute='_compute_stock_held', digits=(16, 1))
     rice_kg = fields.Float(string="Rice Held (kg)", compute='_compute_stock_held', digits='Product Unit')
@@ -96,24 +97,24 @@ class ClRiceFarmerSeason(models.Model):
     low_cover = fields.Boolean(string="Low Collateral Cover", compute='_compute_stock_held')
 
     # Live figures (what was charged, by kind)
-    loan_total = fields.Monetary(string="Loans Disbursed", compute='_compute_charges')
-    interest_total = fields.Monetary(string="Interest", compute='_compute_charges')
+    loan_total = fields.Monetary(string="Loans Given", compute='_compute_charges')
     service_total = fields.Monetary(string="Services", compute='_compute_charges')
     operator_total = fields.Monetary(string="Operators Paid", compute='_compute_charges')
     milling_total = fields.Monetary(string="Milling", compute='_compute_charges')
     storage_total = fields.Monetary(string="Storage", compute='_compute_charges')
-    byproduct_credit_total = fields.Monetary(string="By-product Credits", compute='_compute_charges')
+    opening_total = fields.Monetary(string="Opening Balance", compute='_compute_charges')
     charges_total = fields.Monetary(string="Total Charged", compute='_compute_charges')
-    # Live balances (from accounting, after repayments)
+    paid_total = fields.Monetary(string="Paid by the Farmer", compute='_compute_charges')
+    # Live balances (from accounting)
     balance_owed = fields.Monetary(
         string="Owed by Farmer", compute='_compute_balances',
         help="Open balance of the farmer's loans and charges for this season.")
-    credits_due = fields.Monetary(
-        string="Due to Farmer", compute='_compute_balances',
-        help="Open sale proceeds and credits the mill owes the farmer for this season.")
+    funds_held = fields.Monetary(
+        string="Funds Held for Farmer", compute='_compute_balances',
+        help="Money the mill holds for the farmer (buyer payments received, payouts not yet made).")
     net_balance = fields.Monetary(
         string="Net Balance", compute='_compute_balances',
-        help="Due to the farmer minus owed by the farmer. Negative: the farmer still owes the mill.")
+        help="Funds held minus owed. Negative: the farmer still owes the mill.")
     exposure = fields.Monetary(compute='_compute_balances', help="Owed by the farmer plus loans waiting for disbursement.")
     over_limit = fields.Boolean(string="Over Credit Limit", compute='_compute_balances')
 
@@ -151,19 +152,21 @@ class ClRiceFarmerSeason(models.Model):
             fs.credit_limit = fs.credit_limit_override or fs.credit_limit_computed
 
     def _compute_document_counts(self):
-        loans = dict(self.env['cl.rice.loan']._read_group(
-            [('farmer_season_id', 'in', self.ids)], ['farmer_season_id'], ['__count']))
-        jobs = dict(self.env['cl.rice.service.job']._read_group(
-            [('farmer_season_id', 'in', self.ids)], ['farmer_season_id'], ['__count']))
-        intakes = dict(self.env['cl.rice.intake']._read_group(
-            [('farmer_season_id', 'in', self.ids), ('state', '=', 'done')], ['farmer_season_id'], ['__count']))
-        millings = dict(self.env['cl.rice.milling.job']._read_group(
-            [('farmer_season_id', 'in', self.ids)], ['farmer_season_id'], ['__count']))
+        def count(model, domain=()):
+            return dict(self.env[model]._read_group(
+                [('farmer_season_id', 'in', self.ids), *domain], ['farmer_season_id'], ['__count']))
+
+        loans = count('cl.rice.loan')
+        jobs = count('cl.rice.service.job')
+        intakes = count('cl.rice.intake', [('state', '=', 'done')])
+        millings = count('cl.rice.milling.job')
+        sales = count('cl.rice.facilitated.sale')
         for fs in self:
             fs.loan_count = loans.get(fs, 0)
             fs.service_job_count = jobs.get(fs, 0)
             fs.intake_count = intakes.get(fs, 0)
             fs.milling_count = millings.get(fs, 0)
+            fs.sale_count = sales.get(fs, 0)
             fs.settlement_count = len(fs.settlement_ids)
 
     def _compute_stock_held(self):
@@ -179,7 +182,7 @@ class ClRiceFarmerSeason(models.Model):
         for quant in quants:
             fs = quant.lot_id.cl_farmer_season_id
             if quant.owner_id != fs.partner_id:
-                continue  # sold or bought by the mill
+                continue
             key = (fs.id, quant.product_id.cl_rice_product)
             kg[key] = kg.get(key, 0.0) + quant.quantity
         bags = {}
@@ -198,31 +201,32 @@ class ClRiceFarmerSeason(models.Model):
             fs.collateral_cover = fs.collateral_value / balance * 100.0 if balance > 0 else 0.0
             fs.low_cover = balance > 0 and fs.collateral_cover < fs.company_id.cl_rice_min_cover_percent
 
-    @api.depends('loan_ids.state', 'loan_ids.amount', 'loan_ids.interest_total',
+    @api.depends('loan_ids.state', 'loan_ids.amount',
                  'service_job_ids.state', 'service_job_ids.amount', 'service_job_ids.operator_paid_amount',
-                 'milling_job_ids.state', 'milling_job_ids.fee_amount', 'milling_job_ids.byproduct_credit',
-                 'storage_fee_ids.amount')
+                 'milling_job_ids.state', 'milling_job_ids.fee_amount', 'storage_fee_ids.amount',
+                 'payment_ids.state', 'payment_ids.amount')
     def _compute_charges(self):
+        opening = dict(self.env['cl.rice.opening.balance.line'].sudo()._read_group(
+            [('farmer_season_id', 'in', self.ids), ('batch_id.state', '=', 'posted')],
+            ['farmer_season_id'], ['debt_total:sum']))
         for fs in self:
-            loans = fs.loan_ids.filtered(lambda l: l.state in ('disbursed', 'settled'))
+            loans = fs.loan_ids.filtered(lambda l: l.state in ('disbursed', 'settled') and l.loan_type != 'carry_forward')
             jobs = fs.service_job_ids.filtered(lambda j: j.state == 'charged')
-            fs.loan_total = sum(loans.mapped('amount'))
-            fs.interest_total = sum(loans.mapped('interest_total'))
+            fs.loan_total = sum(loans.mapped('amount')) + sum(
+                fs.loan_ids.filtered(lambda l: l.state in ('disbursed', 'settled') and l.loan_type == 'carry_forward')
+                .mapped('amount'))
             fs.service_total = sum(jobs.mapped('amount'))
             fs.operator_total = sum(jobs.mapped('operator_paid_amount'))
-            millings = fs.milling_job_ids.filtered(lambda j: j.state == 'done')
-            fs.milling_total = sum(millings.mapped('fee_amount'))
-            fs.byproduct_credit_total = sum(millings.mapped('byproduct_credit'))
+            fs.milling_total = sum(fs.milling_job_ids.filtered(lambda j: j.state == 'done').mapped('fee_amount'))
             fs.storage_total = sum(fs.storage_fee_ids.mapped('amount'))
-            fs.charges_total = fs._cl_charges_total()
+            fs.opening_total = opening.get(fs, 0.0)
+            fs.charges_total = (fs.loan_total + fs.service_total + fs.operator_total
+                                + fs.milling_total + fs.storage_total + fs.opening_total)
+            fs.paid_total = sum(fs.payment_ids.filtered(
+                lambda p: p.state == 'posted' and p.payment_type == 'repayment').mapped('amount'))
 
-    def _cl_charges_total(self):
-        self.ensure_one()
-        return (self.loan_total + self.interest_total + self.service_total + self.operator_total
-                + self.milling_total + self.storage_total)
-
-    @api.depends('loan_ids.state', 'loan_ids.interest_total', 'service_job_ids.state',
-                 'milling_job_ids.state', 'storage_fee_ids')
+    @api.depends('loan_ids.state', 'service_job_ids.state', 'milling_job_ids.state', 'storage_fee_ids',
+                 'payment_ids.state', 'facilitated_sale_ids.state', 'settlement_ids.state')
     def _compute_balances(self):
         owed, due = self._cl_open_balances()
         pending = dict(self.env['cl.rice.loan']._read_group(
@@ -230,16 +234,20 @@ class ClRiceFarmerSeason(models.Model):
             ['farmer_season_id'], ['amount:sum']))
         for fs in self:
             fs.balance_owed = owed.get(fs.id, 0.0)
-            fs.credits_due = due.get(fs.id, 0.0)
-            fs.net_balance = fs.credits_due - fs.balance_owed
+            fs.funds_held = due.get(fs.id, 0.0)
+            fs.net_balance = fs.funds_held - fs.balance_owed
             fs.exposure = fs.balance_owed + pending.get(fs, 0.0)
             fs.over_limit = fs.currency_id.compare_amounts(fs.exposure, fs.credit_limit) > 0
 
     def _cl_open_balances(self):
-        """Open receivable (owed) and payable (due) balances per farmer season id."""
+        """Open receivable (owed) and payable (due to the farmer) balances per farmer season id.
+
+        Always read from the database: the entries posted in the same transaction may be newer than the cache.
+        """
         owed, due = {}, {}
         if not self.ids:
             return owed, due
+        self.env['account.move.line'].flush_model()
         groups = self.env['account.move.line'].sudo()._read_group(
             [
                 ('cl_farmer_season_id', 'in', self.ids),
@@ -256,15 +264,18 @@ class ClRiceFarmerSeason(models.Model):
                 due[fs.id] = due.get(fs.id, 0.0) - residual
         return owed, due
 
+    def _cl_balance_owed(self):
+        self.ensure_one()
+        owed, _due = self._cl_open_balances()
+        return owed.get(self.id, 0.0)
+
     def _cl_exposure(self, exclude_loans=None):
         """Owed balance plus the loans waiting for disbursement (except ``exclude_loans``)."""
         self.ensure_one()
         pending = self.loan_ids.filtered(lambda l: l.state in ('to_approve', 'approved'))
         if exclude_loans:
             pending -= exclude_loans
-        # read the balance from the database: the posted entries may be newer than the cache
-        owed, _due = self._cl_open_balances()
-        return owed.get(self.id, 0.0) + sum(pending.mapped('amount'))
+        return self._cl_balance_owed() + sum(pending.mapped('amount'))
 
     @api.depends('partner_id', 'season_id')
     def _compute_display_name(self):
@@ -342,6 +353,103 @@ class ClRiceFarmerSeason(models.Model):
             and l.partner_id.commercial_partner_id == self.partner_id.commercial_partner_id
         ).cl_farmer_season_id = self
 
+    def _cl_open_receivables(self):
+        self.ensure_one()
+        return self.env['account.move.line'].sudo().search([
+            ('cl_farmer_season_id', '=', self.id),
+            ('parent_state', '=', 'posted'),
+            ('account_id.account_type', '=', 'asset_receivable'),
+            ('reconciled', '=', False),
+            ('amount_residual', '>', 0),
+        ], order='date, id')
+
+    def _cl_post_allocation(self, journal, debit_vals, amount, ref, date=None, excess_to_funds=False):
+        """Post one entry paying the farmer's open receivables, oldest first.
+
+        :param debit_vals: values of the debit line (where the money comes from)
+        :param amount: amount available to pay with
+        :param excess_to_funds: credit what is left over to the farmer's funds held,
+            otherwise only the needed amount is debited
+        :return: (move, amount applied to receivables)
+        """
+        self.ensure_one()
+        company = self.company_id
+        currency = self.currency_id
+        remaining = amount
+        credit_vals, targets = [], []
+        for item in self._cl_open_receivables():
+            if currency.compare_amounts(remaining, 0) <= 0:
+                break
+            take = min(item.amount_residual, remaining)
+            credit_vals.append({
+                'name': ref,
+                'account_id': item.account_id.id,
+                'partner_id': item.partner_id.id,
+                'credit': take,
+                'cl_farmer_season_id': self.id,
+            })
+            targets.append(item)
+            remaining -= take
+        applied = amount - remaining
+        if excess_to_funds and currency.compare_amounts(remaining, 0) > 0:
+            if not company.cl_rice_funds_held_account_id:
+                raise UserError(self.env._("Set the farmer funds held account in the Rice Mill settings."))
+            credit_vals.append({
+                'name': self.env._("Overpayment held for the farmer - %s", ref),
+                'account_id': company.cl_rice_funds_held_account_id.id,
+                'partner_id': self.partner_id.id,
+                'credit': remaining,
+                'cl_farmer_season_id': self.id,
+            })
+        debit_amount = amount if excess_to_funds else applied
+        if currency.is_zero(debit_amount):
+            return self.env['account.move'], 0.0
+        move = self.env['account.move'].sudo().create({
+            'move_type': 'entry',
+            'journal_id': journal.id,
+            'date': date or fields.Date.context_today(self),
+            'ref': ref,
+            'cl_farmer_season_id': self.id,
+            'company_id': company.id,
+            'line_ids': [(0, 0, dict(debit_vals, name=debit_vals.get('name') or ref, debit=debit_amount))]
+            + [(0, 0, vals) for vals in credit_vals],
+        })
+        move.action_post()
+        new_credits = move.line_ids.sorted('id')[1:len(targets) + 1]
+        for item, counterpart in zip(targets, new_credits):
+            (item | counterpart).reconcile()
+        return move, applied
+
+    def _cl_apply_funds_held(self):
+        """Pay the farmer's open balance with the money the mill holds for him.
+
+        :return: the amount applied
+        """
+        self.ensure_one()
+        company = self.company_id
+        funds_account = company.cl_rice_funds_held_account_id
+        funds_lines = self.env['account.move.line'].sudo().search([
+            ('cl_farmer_season_id', '=', self.id),
+            ('parent_state', '=', 'posted'),
+            ('account_id', '=', funds_account.id),
+            ('reconciled', '=', False),
+            ('amount_residual', '<', 0),
+        ], order='date, id')
+        available = -sum(funds_lines.mapped('amount_residual'))
+        owed = self._cl_balance_owed()
+        amount = min(available, owed)
+        if self.currency_id.compare_amounts(amount, 0) <= 0:
+            return 0.0
+        move, applied = self._cl_post_allocation(
+            company.cl_rice_settlement_journal_id,
+            {'account_id': funds_account.id, 'partner_id': self.partner_id.id, 'cl_farmer_season_id': self.id},
+            amount,
+            self.env._("Funds held applied to the balance of %s", self.name),
+        )
+        if move:
+            (move.line_ids.filtered(lambda l: l.account_id == funds_account) | funds_lines).reconcile()
+        return applied
+
     def _cl_find_lot(self, product):
         self.ensure_one()
         return self.env['stock.lot'].sudo().search([
@@ -365,13 +473,44 @@ class ClRiceFarmerSeason(models.Model):
             })
         return lot
 
+    # ------------------------------------------------------------------
+    # Business buttons
+    # ------------------------------------------------------------------
+    def _cl_open_form(self, model, name, context=None):
+        self.ensure_one()
+        return {
+            'name': name,
+            'type': 'ir.actions.act_window',
+            'res_model': model,
+            'view_mode': 'form',
+            'target': 'current',
+            'context': {'default_farmer_season_id': self.id, **(context or {})},
+        }
+
+    def action_give_loan(self):
+        self._cl_check_open()
+        return self._cl_open_form('cl.rice.loan', self.env._("Give Loan"))
+
+    def action_record_service(self):
+        self._cl_check_open()
+        return self._cl_open_form('cl.rice.service.job', self.env._("Record Service"))
+
+    def action_receive_payment(self):
+        self._cl_check_open()
+        return self._cl_open_form('cl.rice.farmer.payment', self.env._("Receive Payment"))
+
+    def action_release_stock(self):
+        self._cl_check_open()
+        return self._cl_open_form('cl.rice.facilitated.sale', self.env._("Release Stock"))
+
     def action_open_settle(self):
+        """Pay Farmer: settle the season and pay out what is due."""
         self.ensure_one()
         self._cl_check_open()
         if not self.env.user.has_group('cl_rice_mill.cl_rice_mill_group_accountant'):
-            raise AccessError(self.env._("Only a Rice Mill Accountant can settle farmers."))
+            raise AccessError(self.env._("Only the office (Rice Mill Accountant) can settle farmers."))
         return {
-            'name': self.env._("Settle %s", self.partner_id.name),
+            'name': self.env._("Pay Farmer: %s", self.partner_id.name),
             'type': 'ir.actions.act_window',
             'res_model': 'cl.rice.settlement.create',
             'view_mode': 'form',
@@ -379,51 +518,30 @@ class ClRiceFarmerSeason(models.Model):
             'context': {'default_farmer_season_id': self.id},
         }
 
-    def action_view_settlements(self):
+    def _cl_document_action(self, xml_id):
         self.ensure_one()
-        action = self.env['ir.actions.act_window']._for_xml_id('cl_rice_mill.cl_rice_settlement_action')
+        action = self.env['ir.actions.act_window']._for_xml_id(xml_id)
         action['domain'] = [('farmer_season_id', '=', self.id)]
+        action['context'] = {'default_farmer_season_id': self.id}
         return action
 
-    def action_buy_crop(self):
-        self.ensure_one()
-        self._cl_check_open()
-        return {
-            'name': self.env._("Buy Crop from %s", self.partner_id.name),
-            'type': 'ir.actions.act_window',
-            'res_model': 'cl.rice.ownership.transfer',
-            'view_mode': 'form',
-            'target': 'current',
-            'context': {'default_farmer_season_id': self.id},
-        }
+    def action_view_settlements(self):
+        return self._cl_document_action('cl_rice_mill.cl_rice_settlement_action')
 
     def action_view_intakes(self):
-        self.ensure_one()
-        action = self.env['ir.actions.act_window']._for_xml_id('cl_rice_mill.cl_rice_intake_action')
-        action['domain'] = [('farmer_season_id', '=', self.id)]
-        action['context'] = {'default_farmer_season_id': self.id}
-        return action
+        return self._cl_document_action('cl_rice_mill.cl_rice_intake_action')
 
     def action_view_milling_jobs(self):
-        self.ensure_one()
-        action = self.env['ir.actions.act_window']._for_xml_id('cl_rice_mill.cl_rice_milling_job_action')
-        action['domain'] = [('farmer_season_id', '=', self.id)]
-        action['context'] = {'default_farmer_season_id': self.id}
-        return action
+        return self._cl_document_action('cl_rice_mill.cl_rice_milling_job_action')
 
     def action_view_loans(self):
-        self.ensure_one()
-        action = self.env['ir.actions.act_window']._for_xml_id('cl_rice_mill.cl_rice_loan_action')
-        action['domain'] = [('farmer_season_id', '=', self.id)]
-        action['context'] = {'default_farmer_season_id': self.id}
-        return action
+        return self._cl_document_action('cl_rice_mill.cl_rice_loan_action')
 
     def action_view_service_jobs(self):
-        self.ensure_one()
-        action = self.env['ir.actions.act_window']._for_xml_id('cl_rice_mill.cl_rice_service_job_action')
-        action['domain'] = [('farmer_season_id', '=', self.id)]
-        action['context'] = {'default_farmer_season_id': self.id}
-        return action
+        return self._cl_document_action('cl_rice_mill.cl_rice_service_job_action')
+
+    def action_view_sales(self):
+        return self._cl_document_action('cl_rice_mill.cl_rice_facilitated_sale_action')
 
     def action_view_journal_items(self):
         self.ensure_one()
@@ -446,7 +564,7 @@ class ClRiceFarmerSeason(models.Model):
                 locked[0].name))
 
     def _cl_advance_state(self, from_states, to_state):
-        """Move farmer seasons forward when an operation happens (intake, sale, settlement).
+        """Move farmer seasons forward when an operation happens (intake, release, settlement).
 
         Done as superuser: the operation is allowed to the user (a warehouse officer receiving
         paddy) even though editing the farmer season itself is not; only the state changes.

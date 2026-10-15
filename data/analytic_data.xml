@@ -38,19 +38,9 @@
         <field name="code">SL-MILL-W</field>
         <field name="plan_id" ref="analytic_plan_service_lines"/>
     </record>
-    <record id="analytic_service_commission" model="account.analytic.account">
-        <field name="name">Sales Commission</field>
-        <field name="code">SL-COMM</field>
-        <field name="plan_id" ref="analytic_plan_service_lines"/>
-    </record>
-    <record id="analytic_service_trading" model="account.analytic.account">
-        <field name="name">Rice Trading</field>
-        <field name="code">SL-TRADE</field>
-        <field name="plan_id" ref="analytic_plan_service_lines"/>
-    </record>
-    <record id="analytic_service_interest" model="account.analytic.account">
-        <field name="name">Loan Interest</field>
-        <field name="code">SL-INTEREST</field>
+    <record id="analytic_service_byproducts" model="account.analytic.account">
+        <field name="name">By-products Sales</field>
+        <field name="code">SL-BYPROD</field>
         <field name="plan_id" ref="analytic_plan_service_lines"/>
     </record>
     <record id="analytic_service_transport" model="account.analytic.account">

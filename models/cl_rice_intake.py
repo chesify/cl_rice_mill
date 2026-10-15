@@ -4,7 +4,7 @@ from odoo.exceptions import AccessError, UserError, ValidationError
 
 class ClRiceIntake(models.Model):
     _name = 'cl.rice.intake'
-    _description = "Paddy Intake (Weighing)"
+    _description = "Paddy Intake"
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'date desc, id desc'
     _check_company_auto = True
@@ -16,7 +16,7 @@ class ClRiceIntake(models.Model):
         string="Type", required=True, default='farmer', tracking=True)
     farmer_season_id = fields.Many2one(
         'cl.rice.farmer.season', string="Farmer Season", index=True, tracking=True, check_company=True,
-        domain="[('state', 'in', ('active', 'harvested', 'in_storage', 'sold'))]")
+        domain="[('state', 'in', ('active', 'harvested', 'in_storage', 'released'))]")
     partner_id = fields.Many2one(
         'res.partner', string="Owner", required=True, index=True, tracking=True,
         compute='_compute_partner_id', store=True, readonly=False, precompute=True)
@@ -33,9 +33,13 @@ class ClRiceIntake(models.Model):
         domain="[('cl_rice_product', '=', 'paddy')]",
         default=lambda self: self.env.ref('cl_rice_mill.product_paddy', raise_if_not_found=False))
     warehouse_id = fields.Many2one(
-        'stock.warehouse', string="Store (Ghala)", required=True, check_company=True,
-        default=lambda self: self.env.company.cl_rice_paddy_warehouse_id)
-    bags = fields.Integer(string="Bags (Gunia)", tracking=True)
+        'stock.warehouse', string="Warehouse", required=True, check_company=True,
+        default=lambda self: self.env.company.cl_rice_warehouse_id)
+    location_id = fields.Many2one(
+        'stock.location', string="Partition", required=True, check_company=True,
+        domain="[('usage', '=', 'internal'), ('warehouse_id', '=', warehouse_id)]",
+        default=lambda self: self.env.company.cl_rice_paddy_location_id)
+    bags = fields.Integer(string="Bags", tracking=True)
     gross_weight = fields.Float(string="Gross Weight (kg)", digits='Product Unit', tracking=True)
     tare_weight = fields.Float(
         string="Tare (kg)", digits='Product Unit', tracking=True,
@@ -91,7 +95,8 @@ class ClRiceIntake(models.Model):
         return intakes
 
     def write(self, vals):
-        frozen = {'farmer_season_id', 'partner_id', 'product_id', 'bags', 'gross_weight', 'tare_weight', 'warehouse_id'}
+        frozen = {'farmer_season_id', 'partner_id', 'product_id', 'bags', 'gross_weight', 'tare_weight',
+                  'warehouse_id', 'location_id'}
         if frozen & set(vals) and self.filtered(lambda i: i.state != 'draft'):
             raise UserError(self.env._("A received intake cannot be changed."))
         return super().write(vals)
@@ -128,7 +133,7 @@ class ClRiceIntake(models.Model):
         picking = self.env['stock.picking']._cl_rice_done_transfer(
             warehouse.in_type_id,
             self.partner_id.property_stock_supplier,
-            warehouse.lot_stock_id,
+            self.location_id,
             self.partner_id,
             [{'product': self.product_id, 'qty': self.net_weight, 'lot': lot, 'bags': self.bags}],
             origin=self.name,
@@ -137,7 +142,7 @@ class ClRiceIntake(models.Model):
         self.farmer_season_id._cl_advance_state(('active', 'harvested'), 'in_storage')
         self.message_post(body=self.env._(
             "%(kg)s kg in %(bags)s bags received into %(store)s, lot %(lot)s.",
-            kg=self.net_weight, bags=self.bags, store=warehouse.name, lot=lot.name))
+            kg=self.net_weight, bags=self.bags, store=self.location_id.display_name, lot=lot.name))
         self.partner_id._cl_rice_notify('intake_done', self)
 
     def action_cancel(self):
@@ -168,7 +173,7 @@ class ClRiceIntake(models.Model):
             self.product_id, self.lot_id, self.partner_id, self.warehouse_id.lot_stock_id)
         self.env['stock.picking']._cl_rice_done_transfer(
             self.warehouse_id.out_type_id,
-            self.warehouse_id.lot_stock_id,
+            self.location_id,
             self.partner_id.property_stock_supplier,
             self.partner_id,
             [{'product': self.product_id, 'qty': self.net_weight, 'lot': self.lot_id, 'bags': self.bags, 'quants': quants}],
