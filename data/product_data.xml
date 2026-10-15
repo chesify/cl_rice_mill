@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="product_category_rice_mill" model="product.category">
+        <field name="name">Rice Mill</field>
+    </record>
+
+    <record id="product_paddy" model="product.product">
+        <field name="name">Paddy (Mpunga)</field>
+        <field name="default_code">MPUNGA</field>
+        <field name="type">consu</field>
+        <field name="is_storable" eval="True"/>
+        <field name="tracking">lot</field>
+        <field name="uom_id" ref="uom.product_uom_kgm"/>
+        <field name="categ_id" ref="product_category_rice_mill"/>
+        <field name="cl_rice_product">paddy</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="True"/>
+    </record>
+    <record id="product_rice" model="product.product">
+        <field name="name">Milled Rice (Mchele)</field>
+        <field name="default_code">MCHELE</field>
+        <field name="type">consu</field>
+        <field name="is_storable" eval="True"/>
+        <field name="tracking">lot</field>
+        <field name="uom_id" ref="uom.product_uom_kgm"/>
+        <field name="categ_id" ref="product_category_rice_mill"/>
+        <field name="cl_rice_product">rice</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="True"/>
+    </record>
+    <record id="product_broken" model="product.product">
+        <field name="name">Broken Rice (Mchele Vipande)</field>
+        <field name="default_code">VIPANDE</field>
+        <field name="type">consu</field>
+        <field name="is_storable" eval="True"/>
+        <field name="tracking">lot</field>
+        <field name="uom_id" ref="uom.product_uom_kgm"/>
+        <field name="categ_id" ref="product_category_rice_mill"/>
+        <field name="cl_rice_product">broken</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="True"/>
+    </record>
+    <record id="product_bran" model="product.product">
+        <field name="name">Bran (Pumba)</field>
+        <field name="default_code">PUMBA</field>
+        <field name="type">consu</field>
+        <field name="is_storable" eval="True"/>
+        <field name="tracking">lot</field>
+        <field name="uom_id" ref="uom.product_uom_kgm"/>
+        <field name="categ_id" ref="product_category_rice_mill"/>
+        <field name="cl_rice_product">bran</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="True"/>
+    </record>
+    <record id="product_husk" model="product.product">
+        <field name="name">Husk (Makapi)</field>
+        <field name="default_code">MAKAPI</field>
+        <field name="type">consu</field>
+        <field name="is_storable" eval="True"/>
+        <field name="tracking">lot</field>
+        <field name="uom_id" ref="uom.product_uom_kgm"/>
+        <field name="categ_id" ref="product_category_rice_mill"/>
+        <field name="cl_rice_product">husk</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="True"/>
+    </record>
+</odoo>

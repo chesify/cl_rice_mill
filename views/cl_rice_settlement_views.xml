@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="cl_rice_settlement_view_list" model="ir.ui.view">
+        <field name="name">cl.rice.settlement.view.list</field>
+        <field name="model">cl.rice.settlement</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="state in ('reversed', 'cancelled')">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="partner_id"/>
+                <field name="season_id"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="earned_total" sum="Total"/>
+                <field name="owed_total" sum="Total"/>
+                <field name="net_amount" sum="Total" decoration-danger="net_amount &lt; 0"/>
+                <field name="state" widget="badge" decoration-info="state == 'draft'"
+                       decoration-warning="state == 'confirmed'" decoration-success="state == 'paid'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="cl_rice_settlement_view_form" model="ir.ui.view">
+        <field name="name">cl.rice.settlement.view.form</field>
+        <field name="model">cl.rice.settlement</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_compute" type="object" string="Recompute" invisible="state != 'draft'"
+                            groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
+                    <button name="action_confirm" type="object" string="Confirm Settlement" class="btn-primary"
+                            invisible="state != 'draft'" groups="cl_rice_mill.cl_rice_mill_group_accountant"
+                            confirm="Everything listed is netted and the farmer season is locked. Continue?"/>
+                    <button name="action_pay" type="object" string="Pay Farmer" class="btn-primary"
+                            invisible="state != 'confirmed'" groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
+                    <button name="action_cancel" type="object" string="Cancel" invisible="state != 'draft'"/>
+                    <button name="action_open_reverse" type="object" string="Reverse"
+                            invisible="state not in ('confirmed', 'paid')" groups="cl_rice_mill.cl_rice_mill_group_manager"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,paid"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="farmer_season_id"/>
+                            <field name="partner_id"/>
+                            <field name="season_id"/>
+                            <field name="date" readonly="state != 'draft'"/>
+                            <field name="company_id" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="earned_total"/>
+                            <field name="owed_total"/>
+                            <field name="net_amount" class="fw-bold fs-4"
+                                   decoration-danger="net_amount &lt; 0" decoration-success="net_amount &gt; 0"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="If the Farmer Still Owes" invisible="net_amount &gt;= 0">
+                            <field name="negative_policy" readonly="state != 'draft'" widget="radio"/>
+                            <field name="next_season_id" readonly="state != 'draft'"
+                                   invisible="negative_policy != 'carry_forward'"
+                                   required="negative_policy == 'carry_forward' and net_amount &lt; 0 and state == 'draft'"/>
+                            <field name="carry_loan_id" invisible="not carry_loan_id"/>
+                        </group>
+                        <group string="Payout (Malipo)" invisible="net_amount &lt;= 0">
+                            <field name="payout_method"/>
+                            <field name="payout_journal_id" readonly="state not in ('draft', 'confirmed')"/>
+                            <field name="payment_id" invisible="not payment_id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Due to the Farmer" name="earned">
+                            <field name="earned_line_ids" readonly="1">
+                                <list>
+                                    <field name="date"/>
+                                    <field name="category"/>
+                                    <field name="name"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="amount" sum="Total"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Owed by the Farmer" name="owed">
+                            <field name="owed_line_ids" readonly="1">
+                                <list>
+                                    <field name="date"/>
+                                    <field name="category"/>
+                                    <field name="name"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="amount" sum="Total"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Accounting" name="accounting" groups="cl_rice_mill.cl_rice_mill_group_accountant">
+                            <group>
+                                <field name="move_id"/>
+                                <field name="reversal_reason" invisible="not reversal_reason"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="cl_rice_settlement_view_search" model="ir.ui.view">
+        <field name="name">cl.rice.settlement.view.search</field>
+        <field name="model">cl.rice.settlement</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="season_id"/>
+                <filter name="to_pay" string="To Pay" domain="[('state', '=', 'confirmed')]"/>
+                <filter name="negative" string="Farmer Still Owes" domain="[('net_amount', '&lt;', 0)]"/>
+                <group>
+                    <filter name="group_season" string="Season" context="{'group_by': 'season_id'}"/>
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="cl_rice_settlement_action" model="ir.actions.act_window">
+        <field name="name">Settlements</field>
+        <field name="res_model">cl.rice.settlement</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No settlement yet</p>
+            <p>Settle a farmer from the farmer season once the crop is sold.</p>
+        </field>
+    </record>
+</odoo>

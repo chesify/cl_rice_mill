@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="cl_rice_service_job_view_list" model="ir.ui.view">
+        <field name="name">cl.rice.service.job.view.list</field>
+        <field name="model">cl.rice.service.job</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="state == 'cancelled'">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="partner_id"/>
+                <field name="service_type"/>
+                <field name="vehicle_id" optional="show"/>
+                <field name="operator_id" optional="show"/>
+                <field name="quantity"/>
+                <field name="uom"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="amount" sum="Total"/>
+                <field name="operator_paid_amount" sum="Total" optional="show"/>
+                <field name="cost_total" sum="Total" optional="hide"/>
+                <field name="is_free" optional="hide"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'draft'"
+                       decoration-warning="state == 'done'"
+                       decoration-success="state == 'charged'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="cl_rice_service_job_view_form" model="ir.ui.view">
+        <field name="name">cl.rice.service.job.view.form</field>
+        <field name="model">cl.rice.service.job</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_done" type="object" string="Mark Done" class="btn-primary"
+                            invisible="state != 'draft'"/>
+                    <button name="action_charge" type="object" string="Charge Farmer" class="btn-primary"
+                            invisible="state != 'done'" groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
+                    <button name="action_draft" type="object" string="Reset to Draft"
+                            invisible="state not in ('done', 'cancelled')"/>
+                    <button name="action_cancel" type="object" string="Cancel"
+                            invisible="state not in ('draft', 'done')"/>
+                    <button name="action_open_reverse" type="object" string="Reverse"
+                            invisible="state != 'charged'" groups="cl_rice_mill.cl_rice_mill_group_manager"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,done,charged"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group string="Job" name="job">
+                            <field name="farmer_season_id" readonly="state != 'draft'"/>
+                            <field name="partner_id"/>
+                            <field name="service_type" readonly="state != 'draft'"/>
+                            <field name="date" readonly="state == 'charged'"/>
+                            <field name="vehicle_id" readonly="state == 'charged'"/>
+                            <field name="operator_id" readonly="state == 'charged'"/>
+                        </group>
+                        <group string="Charge" name="charge">
+                            <field name="company_id" invisible="1"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="rate_id" readonly="state != 'draft'"/>
+                            <label for="quantity"/>
+                            <div class="o_row">
+                                <field name="quantity" readonly="state != 'draft'"/>
+                                <field name="uom" readonly="state != 'draft'"/>
+                            </div>
+                            <field name="price_unit" readonly="state != 'draft'"/>
+                            <field name="is_free" readonly="state != 'draft'"/>
+                            <field name="amount" class="fw-bold"/>
+                            <field name="invoice_id" groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Operators Paid on Behalf" name="operators">
+                            <group>
+                                <group>
+                                    <field name="operator_paid_amount" readonly="state != 'draft'"/>
+                                    <field name="operator_partner_id" readonly="state != 'draft'"
+                                           required="operator_paid_amount"/>
+                                </group>
+                                <group invisible="not operator_paid_amount">
+                                    <field name="operator_payment_mode" readonly="state != 'draft'"/>
+                                    <field name="operator_journal_id" readonly="state != 'draft'"
+                                           invisible="operator_payment_mode != 'cash'"
+                                           required="operator_paid_amount and operator_payment_mode == 'cash'"/>
+                                    <field name="operator_move_id" groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Job Cost" name="cost">
+                            <group>
+                                <group>
+                                    <field name="fuel_litres"/>
+                                    <field name="fuel_cost"/>
+                                    <field name="operator_cost"/>
+                                    <field name="cost_total"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Notes" name="notes">
+                            <field name="note"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="cl_rice_service_job_view_search" model="ir.ui.view">
+        <field name="name">cl.rice.service.job.view.search</field>
+        <field name="model">cl.rice.service.job</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="farmer_season_id"/>
+                <field name="vehicle_id"/>
+                <field name="operator_id"/>
+                <filter name="my" string="My Farmers" domain="[('field_officer_id', '=', uid)]"/>
+                <separator/>
+                <filter name="to_charge" string="To Charge" domain="[('state', '=', 'done')]"/>
+                <filter name="free" string="Free Services" domain="[('is_free', '=', True)]"/>
+                <separator/>
+                <filter name="date" string="Date" date="date"/>
+                <group>
+                    <filter name="group_type" string="Service" context="{'group_by': 'service_type'}"/>
+                    <filter name="group_vehicle" string="Machine" context="{'group_by': 'vehicle_id'}"/>
+                    <filter name="group_season" string="Season" context="{'group_by': 'season_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="cl_rice_service_job_action" model="ir.actions.act_window">
+        <field name="name">Service Jobs</field>
+        <field name="res_model">cl.rice.service.job</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Record a tractor or harvester job</p>
+        </field>
+    </record>
+</odoo>

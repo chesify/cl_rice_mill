@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="cl_rice_loan_view_list" model="ir.ui.view">
+        <field name="name">cl.rice.loan.view.list</field>
+        <field name="model">cl.rice.loan</field>
+        <field name="arch" type="xml">
+            <list decoration-danger="over_limit" decoration-muted="state == 'cancelled'">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="partner_id"/>
+                <field name="season_id" optional="show"/>
+                <field name="loan_type"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="amount" sum="Total"/>
+                <field name="interest_total" sum="Total" optional="show"/>
+                <field name="disbursement_date" optional="show"/>
+                <field name="field_officer_id" widget="many2one_avatar_user" optional="hide"/>
+                <field name="over_limit" column_invisible="1"/>
+                <field name="state" widget="badge"
+                       decoration-info="state in ('draft', 'to_approve')"
+                       decoration-warning="state == 'approved'"
+                       decoration-success="state in ('disbursed', 'settled')"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="cl_rice_loan_view_form" model="ir.ui.view">
+        <field name="name">cl.rice.loan.view.form</field>
+        <field name="model">cl.rice.loan</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_submit" type="object" string="Submit for Approval" class="btn-primary"
+                            invisible="state != 'draft'"/>
+                    <button name="action_approve" type="object" string="Approve" class="btn-primary"
+                            invisible="state != 'to_approve'" groups="cl_rice_mill.cl_rice_mill_group_manager"/>
+                    <button name="action_disburse" type="object" string="Disburse" class="btn-primary"
+                            invisible="state != 'approved'" groups="cl_rice_mill.cl_rice_mill_group_accountant"
+                            confirm="The money is paid out to the farmer and booked. Continue?"/>
+                    <button name="action_open_reverse" type="object" string="Reverse"
+                            invisible="state != 'disbursed'" groups="cl_rice_mill.cl_rice_mill_group_manager"/>
+                    <button name="action_cancel" type="object" string="Cancel"
+                            invisible="state not in ('draft', 'to_approve', 'approved')"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,to_approve,approved,disbursed,settled"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_payment" type="object" class="oe_stat_button" icon="fa-money"
+                                invisible="not payment_id" string="Payment"
+                                groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
+                    </div>
+                    <div class="alert alert-warning mb-2" role="alert" invisible="not over_limit">
+                        This loan takes the farmer above the credit limit: a manager must approve it with a reason.
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="farmer_season_id" readonly="state != 'draft'"/>
+                            <field name="partner_id"/>
+                            <field name="loan_type" readonly="state != 'draft'"/>
+                            <field name="purpose"/>
+                            <field name="date" readonly="state != 'draft'"/>
+                        </group>
+                        <group>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="company_id" invisible="1"/>
+                            <field name="over_limit" invisible="1"/>
+                            <field name="amount" readonly="state not in ('draft', 'to_approve')"/>
+                            <field name="interest_mode"/>
+                            <field name="interest_rate" invisible="interest_mode == 'none'"/>
+                            <field name="interest_accrual" invisible="interest_mode != 'monthly'"/>
+                            <field name="interest_total" invisible="interest_mode == 'none'"/>
+                        </group>
+                    </group>
+                    <group string="Disbursement" name="disbursement" invisible="loan_type == 'carry_forward'">
+                        <group>
+                            <field name="disbursement_method" readonly="state in ('disbursed', 'settled', 'cancelled')"/>
+                            <field name="journal_id" readonly="state in ('disbursed', 'settled', 'cancelled')"
+                                   required="state == 'approved'"/>
+                        </group>
+                        <group>
+                            <field name="disbursement_date"/>
+                            <field name="payment_id" groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
+                        </group>
+                    </group>
+                    <group string="Approval" name="approval" invisible="not approved_uid">
+                        <field name="approved_uid"/>
+                        <field name="approval_reason" invisible="not approval_reason"/>
+                    </group>
+                    <notebook>
+                        <page string="Interest" name="interest" invisible="interest_mode == 'none'">
+                            <field name="interest_ids" readonly="1">
+                                <list>
+                                    <field name="period"/>
+                                    <field name="date"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="amount" sum="Total"/>
+                                    <field name="move_id"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="cl_rice_loan_view_search" model="ir.ui.view">
+        <field name="name">cl.rice.loan.view.search</field>
+        <field name="model">cl.rice.loan</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="farmer_season_id"/>
+                <field name="season_id"/>
+                <filter name="to_approve" string="To Approve" domain="[('state', '=', 'to_approve')]"/>
+                <filter name="to_disburse" string="To Disburse" domain="[('state', '=', 'approved')]"/>
+                <filter name="outstanding" string="Outstanding" domain="[('state', '=', 'disbursed')]"/>
+                <separator/>
+                <filter name="date" string="Date" date="date"/>
+                <group>
+                    <filter name="group_season" string="Season" context="{'group_by': 'season_id'}"/>
+                    <filter name="group_type" string="Type" context="{'group_by': 'loan_type'}"/>
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="cl_rice_loan_action" model="ir.actions.act_window">
+        <field name="name">Loans (Mikopo)</field>
+        <field name="res_model">cl.rice.loan</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Record a loan request</p>
+            <p>Loans are approved by a manager, then disbursed in cash, by bank or mobile money.</p>
+        </field>
+    </record>
+</odoo>

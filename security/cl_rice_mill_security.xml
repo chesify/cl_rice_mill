@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="cl_rice_mill_module_category" model="ir.module.category">
+        <field name="name">Rice Mill</field>
+        <field name="sequence">40</field>
+    </record>
+
+    <record id="cl_rice_mill_privilege_finance" model="res.groups.privilege">
+        <field name="name">Rice Mill</field>
+        <field name="sequence">10</field>
+        <field name="category_id" ref="cl_rice_mill_module_category"/>
+        <field name="description">Financial roles: loans, charges, sales, settlements and approvals.</field>
+    </record>
+    <record id="cl_rice_mill_privilege_field" model="res.groups.privilege">
+        <field name="name">Rice Mill Field Work</field>
+        <field name="sequence">20</field>
+        <field name="category_id" ref="cl_rice_mill_module_category"/>
+    </record>
+    <record id="cl_rice_mill_privilege_warehouse" model="res.groups.privilege">
+        <field name="name">Rice Mill Warehouse</field>
+        <field name="sequence">30</field>
+        <field name="category_id" ref="cl_rice_mill_module_category"/>
+    </record>
+    <record id="cl_rice_mill_privilege_milling" model="res.groups.privilege">
+        <field name="name">Rice Mill Milling</field>
+        <field name="sequence">40</field>
+        <field name="category_id" ref="cl_rice_mill_module_category"/>
+    </record>
+
+    <!-- hidden base group implied by every rice mill role -->
+    <record id="cl_rice_mill_group_user" model="res.groups">
+        <field name="name">Rice Mill: Basic Access</field>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <record id="cl_rice_mill_group_field_officer" model="res.groups">
+        <field name="name">Field Officer</field>
+        <field name="sequence">10</field>
+        <field name="privilege_id" ref="cl_rice_mill_privilege_field"/>
+        <field name="comment">Registers farmers and farmer seasons, records service jobs and trips for the farmers assigned to them.</field>
+        <field name="implied_ids" eval="[(4, ref('cl_rice_mill_group_user')), (4, ref('base.group_partner_manager'))]"/>
+    </record>
+
+    <record id="cl_rice_mill_group_warehouse" model="res.groups">
+        <field name="name">Warehouse Officer</field>
+        <field name="sequence">10</field>
+        <field name="privilege_id" ref="cl_rice_mill_privilege_warehouse"/>
+        <field name="comment">Paddy intake, transfers and stock views.</field>
+        <field name="implied_ids" eval="[(4, ref('cl_rice_mill_group_user')), (4, ref('stock.group_stock_user'))]"/>
+    </record>
+
+    <record id="cl_rice_mill_group_mill_operator" model="res.groups">
+        <field name="name">Mill Operator</field>
+        <field name="sequence">10</field>
+        <field name="privilege_id" ref="cl_rice_mill_privilege_milling"/>
+        <field name="comment">Milling jobs.</field>
+        <field name="implied_ids" eval="[(4, ref('cl_rice_mill_group_user')), (4, ref('stock.group_stock_user'))]"/>
+    </record>
+
+    <record id="cl_rice_mill_group_accountant" model="res.groups">
+        <field name="name">Accountant</field>
+        <field name="sequence">10</field>
+        <field name="privilege_id" ref="cl_rice_mill_privilege_finance"/>
+        <field name="comment">Loans, charges, sales, settlements and all financial reports.</field>
+        <field name="implied_ids" eval="[
+            (4, ref('cl_rice_mill_group_user')),
+            (4, ref('account.group_account_invoice')),
+            (4, ref('sales_team.group_sale_salesman')),
+            (4, ref('stock.group_stock_user')),
+        ]"/>
+    </record>
+
+    <record id="cl_rice_mill_group_manager" model="res.groups">
+        <field name="name">Manager</field>
+        <field name="sequence">20</field>
+        <field name="privilege_id" ref="cl_rice_mill_privilege_finance"/>
+        <field name="comment">Everything, plus approvals, credit limit overrides, reversals and configuration.</field>
+        <field name="implied_ids" eval="[
+            (4, ref('cl_rice_mill_group_accountant')),
+            (4, ref('cl_rice_mill_group_field_officer')),
+            (4, ref('cl_rice_mill_group_warehouse')),
+            (4, ref('cl_rice_mill_group_mill_operator')),
+            (4, ref('fleet.fleet_group_manager')),
+        ]"/>
+        <field name="user_ids" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+    </record>
+</odoo>

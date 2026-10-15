@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_production_lot_form" model="ir.ui.view">
+        <field name="name">stock.lot.view.form.inherit.cl.rice.mill</field>
+        <field name="model">stock.lot</field>
+        <field name="inherit_id" ref="stock.view_production_lot_form"/>
+        <field name="arch" type="xml">
+            <field name="ref" position="after">
+                <field name="cl_owner_id" invisible="not cl_rice_product"/>
+                <field name="cl_farmer_season_id" invisible="not cl_farmer_season_id"/>
+                <field name="cl_season_id" invisible="not cl_season_id"/>
+                <field name="cl_kg_held" invisible="not cl_rice_product"/>
+                <field name="cl_bag_qty" invisible="not cl_rice_product"/>
+                <field name="cl_first_in_date" invisible="not cl_rice_product"/>
+                <field name="cl_rice_product" invisible="1"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_production_lot_tree" model="ir.ui.view">
+        <field name="name">stock.lot.view.list.inherit.cl.rice.mill</field>
+        <field name="model">stock.lot</field>
+        <field name="inherit_id" ref="stock.view_production_lot_tree"/>
+        <field name="arch" type="xml">
+            <field name="ref" position="after">
+                <field name="cl_owner_id" optional="show"/>
+                <field name="cl_season_id" optional="hide"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="cl_rice_lot_action" model="ir.actions.act_window">
+        <field name="name">Farmer Lots</field>
+        <field name="res_model">stock.lot</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('product_id.cl_rice_product', '!=', False)]</field>
+    </record>
+</odoo>

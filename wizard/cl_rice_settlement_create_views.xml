@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="cl_rice_settlement_create_view_form" model="ir.ui.view">
+        <field name="name">cl.rice.settlement.create.view.form</field>
+        <field name="model">cl.rice.settlement.create</field>
+        <field name="arch" type="xml">
+            <form>
+                <group>
+                    <field name="farmer_season_id"/>
+                    <field name="company_id" invisible="1"/>
+                    <field name="date"/>
+                    <field name="negative_policy" widget="radio"/>
+                    <field name="next_season_id" invisible="negative_policy != 'carry_forward'"/>
+                    <field name="payout_journal_id"/>
+                </group>
+                <p class="text-muted">
+                    Everything the farmer owes and everything due to the farmer for the season is listed.
+                    Review the statement before confirming it.
+                </p>
+                <footer>
+                    <button name="action_create" type="object" string="Prepare Statement" class="btn-primary"/>
+                    <button string="Cancel" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

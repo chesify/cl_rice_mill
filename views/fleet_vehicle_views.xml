@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="fleet_vehicle_view_form" model="ir.ui.view">
+        <field name="name">fleet.vehicle.view.form.inherit.cl.rice.mill</field>
+        <field name="model">fleet.vehicle</field>
+        <field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
+        <field name="arch" type="xml">
+            <field name="category_id" position="after">
+                <field name="cl_machine_category"/>
+                <field name="cl_analytic_account_id" groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
+            </field>
+        </field>
+    </record>
+</odoo>

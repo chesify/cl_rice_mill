@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="cl_rice_milling_job_view_list" model="ir.ui.view">
+        <field name="name">cl.rice.milling.job.view.list</field>
+        <field name="model">cl.rice.milling.job</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="state == 'cancelled'">
+                <field name="name"/>
+                <field name="date_start"/>
+                <field name="mode"/>
+                <field name="partner_id"/>
+                <field name="vehicle_id" optional="show"/>
+                <field name="input_kg" sum="Total"/>
+                <field name="rice_kg" sum="Total"/>
+                <field name="broken_kg" sum="Total" optional="hide"/>
+                <field name="bran_kg" sum="Total" optional="hide"/>
+                <field name="husk_kg" sum="Total" optional="hide"/>
+                <field name="loss_kg" sum="Total" optional="show"/>
+                <field name="recovery_pct" avg="Average"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="fee_amount" sum="Total"/>
+                <field name="state" widget="badge" decoration-info="state == 'draft'"
+                       decoration-warning="state == 'in_progress'" decoration-success="state == 'done'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="cl_rice_milling_job_view_form" model="ir.ui.view">
+        <field name="name">cl.rice.milling.job.view.form</field>
+        <field name="model">cl.rice.milling.job</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_start" type="object" string="Start Milling" invisible="state != 'draft'"/>
+                    <button name="action_done" type="object" string="Finish Milling" class="btn-primary"
+                            invisible="state not in ('draft', 'in_progress')"
+                            confirm="The paddy is consumed and the outputs are stored. Continue?"/>
+                    <button name="action_cancel" type="object" string="Cancel" invisible="state not in ('draft', 'in_progress')"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,in_progress,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_mill_lots" type="object" class="oe_stat_button" icon="fa-cubes"
+                                string="Lots" invisible="state != 'done'"/>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group string="Paddy" name="paddy">
+                            <field name="mode" widget="radio" readonly="state != 'draft'"/>
+                            <field name="farmer_season_id" invisible="mode != 'farmer'"
+                                   required="mode == 'farmer'" readonly="state != 'draft'"/>
+                            <field name="partner_id" invisible="mode == 'mill'" required="mode == 'walkin'"
+                                   readonly="state != 'draft' or mode == 'farmer'"/>
+                            <field name="paddy_product_id" readonly="state != 'draft'"/>
+                            <field name="input_lot_id" readonly="state not in ('draft', 'in_progress')"/>
+                            <field name="available_kg" invisible="state == 'done'"/>
+                            <field name="company_id" invisible="1"/>
+                        </group>
+                        <group string="Machine" name="machine">
+                            <field name="vehicle_id" readonly="state == 'done'"/>
+                            <field name="operator_id" readonly="state == 'done'"/>
+                            <field name="date_start" readonly="state == 'done'"/>
+                            <field name="date_end" readonly="state == 'done'"/>
+                        </group>
+                    </group>
+                    <group string="Weights (kg / bags)" name="weights">
+                        <group>
+                            <label for="input_kg"/>
+                            <div class="o_row">
+                                <field name="input_kg" readonly="state == 'done'"/>
+                                <field name="input_bags" readonly="state == 'done'"/> bags
+                            </div>
+                            <label for="rice_kg"/>
+                            <div class="o_row">
+                                <field name="rice_kg" readonly="state == 'done'"/>
+                                <field name="rice_bags" readonly="state == 'done'"/> bags
+                            </div>
+                            <label for="broken_kg"/>
+                            <div class="o_row">
+                                <field name="broken_kg" readonly="state == 'done'"/>
+                                <field name="broken_bags" readonly="state == 'done'"/> bags
+                            </div>
+                            <label for="bran_kg"/>
+                            <div class="o_row">
+                                <field name="bran_kg" readonly="state == 'done'"/>
+                                <field name="bran_bags" readonly="state == 'done'"/> bags
+                            </div>
+                            <label for="husk_kg"/>
+                            <div class="o_row">
+                                <field name="husk_kg" readonly="state == 'done'"/>
+                                <field name="husk_bags" readonly="state == 'done'"/> bags
+                            </div>
+                        </group>
+                        <group>
+                            <field name="loss_kg" decoration-danger="loss_kg &lt; 0"/>
+                            <field name="recovery_pct" class="fw-bold"/>
+                            <field name="total_recovery_pct"/>
+                        </group>
+                    </group>
+                    <group string="Charge" name="charge" invisible="mode == 'mill'">
+                        <group>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="rate_id" readonly="state == 'done'"/>
+                            <field name="price_unit" readonly="state == 'done'"/>
+                            <field name="fee_basis_qty"/>
+                            <field name="fee_amount" class="fw-bold"/>
+                            <field name="byproduct_credit" invisible="not byproduct_credit"/>
+                        </group>
+                        <group>
+                            <field name="payment_journal_id" invisible="mode != 'walkin'"
+                                   required="mode == 'walkin' and state != 'done'" readonly="state == 'done'"/>
+                            <field name="invoice_id" groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
+                            <field name="payment_id" invisible="not payment_id" groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
+                            <field name="credit_move_id" invisible="not credit_move_id" groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
+                        </group>
+                    </group>
+                    <group invisible="state != 'done'" groups="stock.group_stock_user">
+                        <field name="consume_picking_id"/>
+                        <field name="output_picking_id"/>
+                    </group>
+                    <field name="note" placeholder="Remarks"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="cl_rice_milling_job_view_search" model="ir.ui.view">
+        <field name="name">cl.rice.milling.job.view.search</field>
+        <field name="model">cl.rice.milling.job</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="farmer_season_id"/>
+                <field name="vehicle_id"/>
+                <filter name="open" string="Open" domain="[('state', 'in', ('draft', 'in_progress'))]"/>
+                <filter name="walkin" string="Walk-in" domain="[('mode', '=', 'walkin')]"/>
+                <separator/>
+                <filter name="date_start" string="Date" date="date_start"/>
+                <group>
+                    <filter name="group_mode" string="Mode" context="{'group_by': 'mode'}"/>
+                    <filter name="group_vehicle" string="Machine" context="{'group_by': 'vehicle_id'}"/>
+                    <filter name="group_month" string="Month" context="{'group_by': 'date_start:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="cl_rice_milling_job_view_pivot" model="ir.ui.view">
+        <field name="name">cl.rice.milling.job.view.pivot</field>
+        <field name="model">cl.rice.milling.job</field>
+        <field name="arch" type="xml">
+            <pivot string="Milling Yield">
+                <field name="date_start" interval="month" type="row"/>
+                <field name="input_kg" type="measure"/>
+                <field name="rice_kg" type="measure"/>
+                <field name="recovery_pct" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="cl_rice_milling_job_view_graph" model="ir.ui.view">
+        <field name="name">cl.rice.milling.job.view.graph</field>
+        <field name="model">cl.rice.milling.job</field>
+        <field name="arch" type="xml">
+            <graph string="Milling Yield" type="line">
+                <field name="date_start" interval="month"/>
+                <field name="recovery_pct" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="cl_rice_milling_job_action" model="ir.actions.act_window">
+        <field name="name">Milling Jobs (Kukoboa)</field>
+        <field name="res_model">cl.rice.milling.job</field>
+        <field name="view_mode">list,form,pivot,graph</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Record a milling job</p>
+        </field>
+    </record>
+</odoo>

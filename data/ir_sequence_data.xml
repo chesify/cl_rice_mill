@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="seq_cl_rice_farmer" model="ir.sequence">
+        <field name="name">Farmer Code</field>
+        <field name="code">cl.rice.farmer</field>
+        <field name="prefix">F</field>
+        <field name="padding">5</field>
+        <field name="company_id" eval="False"/>
+    </record>
+    <record id="seq_cl_rice_farmer_season" model="ir.sequence">
+        <field name="name">Farmer Season</field>
+        <field name="code">cl.rice.farmer.season</field>
+        <field name="prefix">MS/%(range_year)s/</field>
+        <field name="padding">4</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="company_id" eval="False"/>
+    </record>
+    <record id="seq_cl_rice_loan" model="ir.sequence">
+        <field name="name">Farmer Loan</field>
+        <field name="code">cl.rice.loan</field>
+        <field name="prefix">LN/%(range_year)s/</field>
+        <field name="padding">4</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="company_id" eval="False"/>
+    </record>
+    <record id="seq_cl_rice_service_job" model="ir.sequence">
+        <field name="name">Service Job</field>
+        <field name="code">cl.rice.service.job</field>
+        <field name="prefix">SJ/%(range_year)s/</field>
+        <field name="padding">4</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="company_id" eval="False"/>
+    </record>
+    <record id="seq_cl_rice_intake" model="ir.sequence">
+        <field name="name">Paddy Intake</field>
+        <field name="code">cl.rice.intake</field>
+        <field name="prefix">IN/%(range_year)s/</field>
+        <field name="padding">4</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="company_id" eval="False"/>
+    </record>
+    <record id="seq_cl_rice_milling_job" model="ir.sequence">
+        <field name="name">Milling Job</field>
+        <field name="code">cl.rice.milling.job</field>
+        <field name="prefix">ML/%(range_year)s/</field>
+        <field name="padding">4</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="company_id" eval="False"/>
+    </record>
+    <record id="seq_cl_rice_storage_fee" model="ir.sequence">
+        <field name="name">Storage Fee</field>
+        <field name="code">cl.rice.storage.fee</field>
+        <field name="prefix">SF/%(range_year)s/</field>
+        <field name="padding">4</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="company_id" eval="False"/>
+    </record>
+    <record id="seq_cl_rice_settlement" model="ir.sequence">
+        <field name="name">Farmer Settlement</field>
+        <field name="code">cl.rice.settlement</field>
+        <field name="prefix">ST/%(range_year)s/</field>
+        <field name="padding">4</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="company_id" eval="False"/>
+    </record>
+    <record id="seq_cl_rice_ownership_transfer" model="ir.sequence">
+        <field name="name">Crop Purchase</field>
+        <field name="code">cl.rice.ownership.transfer</field>
+        <field name="prefix">CP/%(range_year)s/</field>
+        <field name="padding">4</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="company_id" eval="False"/>
+    </record>
+</odoo>

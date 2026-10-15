@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- farmers use the system in Swahili by default -->
+    <function model="res.lang" name="_activate_and_install_lang">
+        <value>sw</value>
+    </function>
+</odoo>

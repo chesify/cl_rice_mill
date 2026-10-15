@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_partner_form" model="ir.ui.view">
+        <field name="name">res.partner.view.form.inherit.cl.rice.mill</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <div name="button_box" position="inside">
+                <button name="action_view_cl_farmer_seasons" type="object" class="oe_stat_button" icon="fa-leaf"
+                        invisible="not is_farmer" groups="cl_rice_mill.cl_rice_mill_group_user">
+                    <field name="cl_farmer_season_count" widget="statinfo" string="Seasons"/>
+                </button>
+            </div>
+            <field name="category_id" position="after">
+                <field name="is_farmer" groups="cl_rice_mill.cl_rice_mill_group_user"/>
+            </field>
+            <page name="contact_addresses" position="before">
+                <page string="Farmer (Mkulima)" name="cl_rice_farmer" invisible="not is_farmer"
+                      groups="cl_rice_mill.cl_rice_mill_group_user">
+                    <div class="mb-2" invisible="cl_farmer_state != 'pending'">
+                        <button name="action_cl_approve_farmer" type="object" string="Approve Farmer" class="btn-primary"
+                                groups="cl_rice_mill.cl_rice_mill_group_manager"/>
+                    </div>
+                    <group>
+                        <group string="Identity" name="cl_rice_identity">
+                            <field name="cl_farmer_code"/>
+                            <field name="cl_farmer_state"/>
+                            <field name="cl_nida_number" groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
+                            <field name="cl_whatsapp" widget="phone"/>
+                            <field name="cl_field_officer_id" widget="many2one_avatar_user"/>
+                            <field name="cl_farmer_group_id"/>
+                        </group>
+                        <group string="Location" name="cl_rice_location">
+                            <field name="cl_village"/>
+                            <field name="cl_ward"/>
+                            <field name="cl_district"/>
+                            <field name="cl_region"/>
+                            <field name="cl_farm_latitude"/>
+                            <field name="cl_farm_longitude"/>
+                            <field name="cl_total_acreage"/>
+                        </group>
+                        <group string="Guarantor and Next of Kin" name="cl_rice_kin">
+                            <field name="cl_guarantor_id"/>
+                            <field name="cl_next_of_kin"/>
+                            <field name="cl_next_of_kin_phone" widget="phone"/>
+                        </group>
+                        <group string="Payouts (Malipo)" name="cl_rice_payout" groups="cl_rice_mill.cl_rice_mill_group_accountant">
+                            <field name="cl_payout_method"/>
+                            <field name="cl_payout_phone" widget="phone"
+                                   invisible="cl_payout_method not in ('mpesa', 'tigopesa', 'airtel')"/>
+                            <field name="cl_payout_bank_id" invisible="cl_payout_method != 'bank'"
+                                   context="{'default_partner_id': id}"/>
+                        </group>
+                    </group>
+                    <div class="mt-2" invisible="cl_farmer_state != 'approved'">
+                        <button name="action_cl_block_farmer" type="object" string="Block Farmer" class="btn-secondary"
+                                groups="cl_rice_mill.cl_rice_mill_group_manager"
+                                confirm="Blocked farmers cannot be registered for new seasons. Continue?"/>
+                    </div>
+                </page>
+            </page>
+        </field>
+    </record>
+
+    <record id="cl_rice_farmer_view_list" model="ir.ui.view">
+        <field name="name">res.partner.view.list.cl.rice.farmer</field>
+        <field name="model">res.partner</field>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="cl_farmer_code"/>
+                <field name="name"/>
+                <field name="phone" optional="show"/>
+                <field name="cl_village" optional="show"/>
+                <field name="cl_district" optional="hide"/>
+                <field name="cl_farmer_group_id" optional="show"/>
+                <field name="cl_total_acreage" sum="Total"/>
+                <field name="cl_field_officer_id" widget="many2one_avatar_user" optional="show"/>
+                <field name="cl_farmer_state" widget="badge"
+                       decoration-warning="cl_farmer_state == 'pending'"
+                       decoration-success="cl_farmer_state == 'approved'"
+                       decoration-danger="cl_farmer_state == 'blocked'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="cl_rice_farmer_view_search" model="ir.ui.view">
+        <field name="name">res.partner.view.search.cl.rice.farmer</field>
+        <field name="model">res.partner</field>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" filter_domain="['|', '|', ('name', 'ilike', self), ('cl_farmer_code', 'ilike', self), ('phone', 'ilike', self)]"/>
+                <field name="cl_village"/>
+                <field name="cl_farmer_group_id"/>
+                <field name="cl_field_officer_id"/>
+                <filter name="my_farmers" string="My Farmers" domain="[('cl_field_officer_id', '=', uid)]"/>
+                <separator/>
+                <filter name="pending" string="Pending Review" domain="[('cl_farmer_state', '=', 'pending')]"/>
+                <filter name="approved" string="Approved" domain="[('cl_farmer_state', '=', 'approved')]"/>
+                <filter name="blocked" string="Blocked" domain="[('cl_farmer_state', '=', 'blocked')]"/>
+                <separator/>
+                <filter name="inactive" string="Archived" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_village" string="Village" context="{'group_by': 'cl_village'}"/>
+                    <filter name="group_farmer_group" string="Farmer Group" context="{'group_by': 'cl_farmer_group_id'}"/>
+                    <filter name="group_officer" string="Field Officer" context="{'group_by': 'cl_field_officer_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="cl_rice_farmer_action" model="ir.actions.act_window">
+        <field name="name">Farmers</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="domain">[('is_farmer', '=', True)]</field>
+        <field name="context">{'default_is_farmer': True, 'default_is_company': False}</field>
+        <field name="search_view_id" ref="cl_rice_farmer_view_search"/>
+        <field name="view_ids" eval="[
+            Command.clear(),
+            Command.create({'view_mode': 'list', 'view_id': ref('cl_rice_farmer_view_list')}),
+            Command.create({'view_mode': 'kanban'}),
+            Command.create({'view_mode': 'form', 'view_id': ref('base.view_partner_form')}),
+        ]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Register the first farmer (mkulima)</p>
+        </field>
+    </record>
+</odoo>

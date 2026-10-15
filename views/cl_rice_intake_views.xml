@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="cl_rice_intake_view_list" model="ir.ui.view">
+        <field name="name">cl.rice.intake.view.list</field>
+        <field name="model">cl.rice.intake</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="state == 'cancelled'">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="partner_id"/>
+                <field name="intake_type" optional="hide"/>
+                <field name="season_id" optional="show"/>
+                <field name="warehouse_id" optional="hide"/>
+                <field name="bags" sum="Total"/>
+                <field name="net_weight" sum="Total"/>
+                <field name="moisture" optional="show"/>
+                <field name="grade" optional="show"/>
+                <field name="lot_id" optional="show"/>
+                <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-success="state == 'done'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="cl_rice_intake_view_form" model="ir.ui.view">
+        <field name="name">cl.rice.intake.view.form</field>
+        <field name="model">cl.rice.intake</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_confirm" type="object" string="Receive into Store" class="btn-primary"
+                            invisible="state != 'draft'"/>
+                    <button name="action_cancel" type="object" string="Cancel" invisible="state != 'draft'"/>
+                    <button name="action_open_reverse" type="object" string="Reverse"
+                            invisible="state != 'done'" groups="cl_rice_mill.cl_rice_mill_group_manager"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group string="Owner" name="owner">
+                            <field name="intake_type" widget="radio" readonly="state != 'draft'"/>
+                            <field name="farmer_season_id" invisible="intake_type != 'farmer'"
+                                   required="intake_type == 'farmer'" readonly="state != 'draft'"/>
+                            <field name="partner_id" readonly="state != 'draft' or intake_type == 'farmer'"/>
+                            <field name="date" readonly="state != 'draft'"/>
+                            <field name="warehouse_id" readonly="state != 'draft'"/>
+                            <field name="company_id" invisible="1"/>
+                        </group>
+                        <group string="Weighing" name="weighing">
+                            <field name="product_id" readonly="state != 'draft'"/>
+                            <field name="bags" readonly="state != 'draft'"/>
+                            <field name="gross_weight" readonly="state != 'draft'"/>
+                            <field name="tare_weight" readonly="state != 'draft'"/>
+                            <field name="net_weight" class="fw-bold"/>
+                            <field name="moisture" readonly="state != 'draft'"/>
+                            <field name="grade" readonly="state != 'draft'"/>
+                        </group>
+                    </group>
+                    <group invisible="state == 'draft'">
+                        <group>
+                            <field name="lot_id"/>
+                            <field name="picking_id" groups="stock.group_stock_user"/>
+                        </group>
+                        <group>
+                            <field name="received_by_id"/>
+                        </group>
+                    </group>
+                    <field name="note" placeholder="Remarks (quality, bags condition...)"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="cl_rice_intake_view_search" model="ir.ui.view">
+        <field name="name">cl.rice.intake.view.search</field>
+        <field name="model">cl.rice.intake</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="farmer_season_id"/>
+                <field name="lot_id"/>
+                <filter name="draft" string="To Receive" domain="[('state', '=', 'draft')]"/>
+                <filter name="walkin" string="Walk-in" domain="[('intake_type', '=', 'walkin')]"/>
+                <separator/>
+                <filter name="date" string="Date" date="date"/>
+                <group>
+                    <filter name="group_season" string="Season" context="{'group_by': 'season_id'}"/>
+                    <filter name="group_grade" string="Grade" context="{'group_by': 'grade'}"/>
+                    <filter name="group_date" string="Day" context="{'group_by': 'date:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="cl_rice_intake_action" model="ir.actions.act_window">
+        <field name="name">Paddy Intake (Mpunga)</field>
+        <field name="res_model">cl.rice.intake</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Weigh and receive a farmer's paddy</p>
+            <p>The paddy stays the farmer's property: it is stored under the farmer as owner and never enters the mill's inventory value.</p>
+        </field>
+    </record>
+</odoo>

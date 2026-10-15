@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="cl_rice_service_rate_view_list" model="ir.ui.view">
+        <field name="name">cl.rice.service.rate.view.list</field>
+        <field name="model">cl.rice.service.rate</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="service_type"/>
+                <field name="uom"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="price_farmer"/>
+                <field name="price_walkin"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+                <field name="active" widget="boolean_toggle" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="cl_rice_service_rate_view_search" model="ir.ui.view">
+        <field name="name">cl.rice.service.rate.view.search</field>
+        <field name="model">cl.rice.service.rate</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="service_type"/>
+                <filter name="current" string="Current"
+                        domain="[('date_from', '&lt;=', context_today().strftime('%Y-%m-%d')), '|', ('date_to', '=', False), ('date_to', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <separator/>
+                <filter name="inactive" string="Archived" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_type" string="Service" context="{'group_by': 'service_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="cl_rice_service_rate_action" model="ir.actions.act_window">
+        <field name="name">Service Rates</field>
+        <field name="res_model">cl.rice.service.rate</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Set the price of each service</p>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="analytic_plan_farmer_seasons" model="account.analytic.plan">
+        <field name="name">Farmer Seasons</field>
+        <field name="default_applicability">optional</field>
+    </record>
+    <record id="analytic_plan_machines" model="account.analytic.plan">
+        <field name="name">Machines</field>
+        <field name="default_applicability">optional</field>
+    </record>
+    <record id="analytic_plan_service_lines" model="account.analytic.plan">
+        <field name="name">Rice Mill Service Lines</field>
+        <field name="default_applicability">optional</field>
+    </record>
+
+    <record id="analytic_service_tractor" model="account.analytic.account">
+        <field name="name">Tractor Services</field>
+        <field name="code">SL-TRACTOR</field>
+        <field name="plan_id" ref="analytic_plan_service_lines"/>
+    </record>
+    <record id="analytic_service_harvester" model="account.analytic.account">
+        <field name="name">Harvester Services</field>
+        <field name="code">SL-HARVEST</field>
+        <field name="plan_id" ref="analytic_plan_service_lines"/>
+    </record>
+    <record id="analytic_service_storage" model="account.analytic.account">
+        <field name="name">Storage</field>
+        <field name="code">SL-STORAGE</field>
+        <field name="plan_id" ref="analytic_plan_service_lines"/>
+    </record>
+    <record id="analytic_service_milling_farmer" model="account.analytic.account">
+        <field name="name">Milling - Farmers</field>
+        <field name="code">SL-MILL-F</field>
+        <field name="plan_id" ref="analytic_plan_service_lines"/>
+    </record>
+    <record id="analytic_service_milling_walkin" model="account.analytic.account">
+        <field name="name">Milling - Walk-in</field>
+        <field name="code">SL-MILL-W</field>
+        <field name="plan_id" ref="analytic_plan_service_lines"/>
+    </record>
+    <record id="analytic_service_commission" model="account.analytic.account">
+        <field name="name">Sales Commission</field>
+        <field name="code">SL-COMM</field>
+        <field name="plan_id" ref="analytic_plan_service_lines"/>
+    </record>
+    <record id="analytic_service_trading" model="account.analytic.account">
+        <field name="name">Rice Trading</field>
+        <field name="code">SL-TRADE</field>
+        <field name="plan_id" ref="analytic_plan_service_lines"/>
+    </record>
+    <record id="analytic_service_interest" model="account.analytic.account">
+        <field name="name">Loan Interest</field>
+        <field name="code">SL-INTEREST</field>
+        <field name="plan_id" ref="analytic_plan_service_lines"/>
+    </record>
+    <record id="analytic_service_transport" model="account.analytic.account">
+        <field name="name">Transport and Other Services</field>
+        <field name="code">SL-OTHER</field>
+        <field name="plan_id" ref="analytic_plan_service_lines"/>
+    </record>
+</odoo>
