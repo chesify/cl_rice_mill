@@ -163,6 +163,8 @@ class ClRiceServiceJob(models.Model):
             if job.operator_paid_amount:
                 job._cl_pay_operator()
             job.state = 'charged'
+            if job.amount or job.operator_paid_amount:
+                job.partner_id._cl_rice_notify('service_charged', job)
 
     def _cl_analytic_distribution(self):
         self.ensure_one()

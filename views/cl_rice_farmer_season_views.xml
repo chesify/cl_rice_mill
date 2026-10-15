@@ -41,6 +41,8 @@
                     <button name="action_open_settle" type="object" string="Pay Farmer"
                             invisible="state not in ('released', 'in_storage', 'harvested', 'active')"
                             groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
+                    <button name="action_send_balance" type="object" string="Send Balance"
+                            invisible="state == 'draft'"/>
                     <button name="action_activate" type="object" string="Activate" class="btn-primary"
                             invisible="state != 'draft'"/>
                     <button name="action_mark_harvested" type="object" string="Mark Harvested"

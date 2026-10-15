@@ -114,6 +114,8 @@ class ResPartner(models.Model):
             raise AccessError(self.env._("Only a Rice Mill Manager can do this."))
 
     def _cl_rice_notify(self, event, records):
-        """Hook called on farmer-facing events (loan_disbursed, intake_done, milling_done, sale_done,
-        settlement_paid). Messaging bridges (WhatsApp, SMS) override it; the core does nothing."""
+        """Hook called on farmer-facing events: loan_disbursed, service_charged, intake_done, milling_done,
+        release_cleared, payment_received, settlement_paid and balance (on request).
+        Messaging bridges (WhatsApp, SMS) override it and return True when a message was sent;
+        the core sends nothing."""
         return False

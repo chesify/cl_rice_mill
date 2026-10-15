@@ -503,6 +503,20 @@ class ClRiceFarmerSeason(models.Model):
         self._cl_check_open()
         return self._cl_open_form('cl.rice.facilitated.sale', self.env._("Release Stock"))
 
+    def action_send_balance(self):
+        """Send the farmer his balance (WhatsApp / SMS, when a messaging bridge is installed)."""
+        self.ensure_one()
+        sent = self.partner_id._cl_rice_notify('balance', self)
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'message': self.env._("Balance sent to %s.", self.partner_id.name) if sent
+                else self.env._("No messaging channel is set up: install the WhatsApp / SMS bridge."),
+                'type': 'success' if sent else 'warning',
+            },
+        }
+
     def action_open_settle(self):
         """Pay Farmer: settle the season and pay out what is due."""
         self.ensure_one()
