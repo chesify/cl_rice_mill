@@ -24,7 +24,7 @@ class ClRiceFarmerPayment(models.Model):
     season_id = fields.Many2one(related='farmer_season_id.season_id', store=True, index=True)
     field_officer_id = fields.Many2one(related='farmer_season_id.field_officer_id', store=True, index=True)
     company_id = fields.Many2one(related='farmer_season_id.company_id', store=True, index=True, precompute=True)
-    currency_id = fields.Many2one(related='company_id.currency_id')
+    currency_id = fields.Many2one('res.currency', compute='_compute_currency_id')
     sale_id = fields.Many2one(
         'cl.rice.facilitated.sale', string="Facilitated Sale", index='btree_not_null', check_company=True,
         domain="[('farmer_season_id', '=', farmer_season_id), ('payment_route', '=', 'luvanda')]")
@@ -53,6 +53,12 @@ class ClRiceFarmerPayment(models.Model):
                 payment.payer_id = payment.sale_id.buyer_id or payment.payer_id
             else:
                 payment.payer_id = payment.farmer_season_id.partner_id
+
+    @api.depends('company_id')
+    def _compute_currency_id(self):
+        # the company comes from the farmer season: use the current one until it is chosen
+        for record in self:
+            record.currency_id = record.company_id.currency_id or self.env.company.currency_id
 
     @api.model_create_multi
     def create(self, vals_list):

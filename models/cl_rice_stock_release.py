@@ -22,7 +22,7 @@ class ClRiceStockRelease(models.Model):
     payment_route = fields.Selection(related='sale_id.payment_route')
     field_officer_id = fields.Many2one(related='sale_id.field_officer_id', store=True, index=True)
     company_id = fields.Many2one(related='sale_id.company_id', store=True, index=True, precompute=True)
-    currency_id = fields.Many2one(related='company_id.currency_id')
+    currency_id = fields.Many2one('res.currency', compute='_compute_currency_id')
     quantity = fields.Float(string="Quantity (kg)", digits='Product Unit', required=True, tracking=True)
     bags = fields.Float(digits=(16, 1), tracking=True)
     vehicle_plate = fields.Char(string="Vehicle Plate", tracking=True)
@@ -52,6 +52,12 @@ class ClRiceStockRelease(models.Model):
     picking_id = fields.Many2one('stock.picking', string="Transfer", readonly=True, copy=False)
 
     _quantity_positive = models.Constraint('CHECK(quantity > 0 AND bags >= 0)', "The quantity must be positive.")
+
+    @api.depends('company_id')
+    def _compute_currency_id(self):
+        # the company comes from the farmer season: use the current one until it is chosen
+        for record in self:
+            record.currency_id = record.company_id.currency_id or self.env.company.currency_id
 
     @api.model_create_multi
     def create(self, vals_list):

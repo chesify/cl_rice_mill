@@ -18,7 +18,7 @@ class ClRiceFacilitatedSale(models.Model):
     season_id = fields.Many2one(related='farmer_season_id.season_id', store=True, index=True)
     field_officer_id = fields.Many2one(related='farmer_season_id.field_officer_id', store=True, index=True)
     company_id = fields.Many2one(related='farmer_season_id.company_id', store=True, index=True, precompute=True)
-    currency_id = fields.Many2one(related='company_id.currency_id')
+    currency_id = fields.Many2one('res.currency', compute='_compute_currency_id')
     date = fields.Date(required=True, default=fields.Date.context_today, tracking=True)
     buyer_id = fields.Many2one('res.partner', string="Buyer", required=True, tracking=True)
     product_id = fields.Many2one(
@@ -97,6 +97,12 @@ class ClRiceFacilitatedSale(models.Model):
                 raise ValidationError(self.env._(
                     "Lot %(lot)s is not the farmer's %(product)s of this season.",
                     lot=sale.lot_id.name, product=sale.product_id.name))
+
+    @api.depends('company_id')
+    def _compute_currency_id(self):
+        # the company comes from the farmer season: use the current one until it is chosen
+        for record in self:
+            record.currency_id = record.company_id.currency_id or self.env.company.currency_id
 
     @api.model_create_multi
     def create(self, vals_list):
