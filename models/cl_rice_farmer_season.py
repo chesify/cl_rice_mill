@@ -2,6 +2,7 @@ from odoo import api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
 
 from .product_template import LOT_SUFFIX
+from .project_task_type import STATE_STAGES
 
 LOCKED_STATES = ('settled', 'closed')
 # fields that may still change on a locked farmer season
@@ -254,6 +255,38 @@ class ClRiceFarmerSeason(models.Model):
         positive = (operator == '=') == value
         return [('id', 'in' if positive else 'not in', ids)]
 
+    def _cl_label(self, record, part=None):
+        """How a loan, a charge or a payment reads on the farmer's statements, in plain words."""
+        model = record._name
+        if model == 'cl.rice.loan':
+            if record.loan_type == 'carry_forward':
+                return self.env._("Balance carried from the previous season (%s)", record.name)
+            types = dict(record._fields['loan_type']._description_selection(self.env))
+            return self.env._("Loan %(ref)s - %(type)s", ref=record.name, type=types[record.loan_type].lower())
+        if model == 'cl.rice.service.job':
+            if part == 'operator':
+                return self.env._("Operators paid for you (%s)", record.name)
+            types = dict(record._fields['service_type']._description_selection(self.env))
+            units = dict(record._fields['uom']._description_selection(self.env))
+            unit = units.get(record.uom, '').lower()
+            return self.env._(
+                "%(service)s, %(qty)s %(uom)s (%(ref)s)", service=types[record.service_type],
+                qty=f"{record.quantity:g}", uom=unit + ('s' if unit and record.quantity != 1 else ''), ref=record.name)
+        if model == 'cl.rice.milling.job':
+            return self.env._("Milling %(kg)s kg of paddy (%(ref)s)", kg=f"{record.input_kg:,.0f}", ref=record.name)
+        if model == 'cl.rice.storage.fee':
+            basis = dict(record._fields['basis']._description_selection(self.env))[record.basis].lower()
+            return self.env._(
+                "Storage for %(period)s, %(qty)s %(basis)s of %(lot)s",
+                period=record.period, qty=f"{record.quantity:g}", basis=basis, lot=record.lot_id.name)
+        if model == 'cl.rice.farmer.payment':
+            if record.payment_type == 'repayment':
+                return self.env._("Payment received from you (%s)", record.name)
+            return self.env._("Paid by %(buyer)s for your crop (%(ref)s)", buyer=record.payer_id.name, ref=record.name)
+        if model == 'cl.rice.opening.balance.line':
+            return self.env._("Opening balance brought forward (%s)", record.batch_id.name)
+        return record.display_name
+
     def _cl_statement_breakdown(self):
         """Everything charged and received this season, in plain words, for statements.
 
@@ -270,34 +303,18 @@ class ClRiceFarmerSeason(models.Model):
                 [('farmer_season_id', '=', self.id), ('batch_id.state', '=', 'posted')]):
             add(line.batch_id.date, 'owed', 'opening',
                 self.env._("Opening balance brought forward (%s)", line.batch_id.name), line.debt_total)
-        loan_types = dict(self.env['cl.rice.loan']._fields['loan_type']._description_selection(self.env))
         for loan in self.loan_ids.filtered(lambda l: l.state in ('disbursed', 'settled')):
-            if loan.loan_type == 'carry_forward':
-                name = self.env._("Balance carried from the previous season (%s)", loan.name)
-            else:
-                name = self.env._("Loan %(ref)s - %(type)s", ref=loan.name, type=loan_types[loan.loan_type].lower())
-            add(loan.disbursement_date or loan.date, 'owed', 'loan', name, loan.amount)
-        service_types = dict(self.env['cl.rice.service.job']._fields['service_type']._description_selection(self.env))
+            add(loan.disbursement_date or loan.date, 'owed', 'loan', self._cl_label(loan), loan.amount)
         for job in self.service_job_ids.filtered(lambda j: j.state == 'charged'):
-            add(job.date, 'owed', 'service', self.env._(
-                "%(service)s, %(qty)s %(uom)s (%(ref)s)",
-                service=service_types[job.service_type], qty=job.quantity, uom=job.uom or '', ref=job.name), job.amount)
-            add(job.date, 'owed', 'operator', self.env._(
-                "Operators paid for you (%s)", job.name), job.operator_paid_amount)
+            add(job.date, 'owed', 'service', self._cl_label(job), job.amount)
+            add(job.date, 'owed', 'operator', self._cl_label(job, 'operator'), job.operator_paid_amount)
         for job in self.milling_job_ids.filtered(lambda j: j.state == 'done'):
-            add(job.date_end and job.date_end.date(), 'owed', 'milling', self.env._(
-                "Milling %(kg)s kg of paddy (%(ref)s)", kg=job.input_kg, ref=job.name), job.fee_amount)
+            add(job.date_end and job.date_end.date(), 'owed', 'milling', self._cl_label(job), job.fee_amount)
         for fee in self.storage_fee_ids:
-            add(fee.date, 'owed', 'storage', self.env._(
-                "Storage %(period)s, %(qty)s %(basis)s", period=fee.period, qty=fee.quantity, basis=fee.basis), fee.amount)
+            add(fee.date, 'owed', 'storage', self._cl_label(fee), fee.amount)
         for payment in self.payment_ids.filtered(lambda p: p.state == 'posted'):
-            if payment.payment_type == 'repayment':
-                name = self.env._("Payment received from you (%s)", payment.name)
-                category = 'repayment'
-            else:
-                name = self.env._("Paid by %(buyer)s for your crop (%(ref)s)", buyer=payment.payer_id.name, ref=payment.name)
-                category = 'buyer_payment'
-            add(payment.date, 'earned', category, name, payment.amount)
+            category = 'repayment' if payment.payment_type == 'repayment' else 'buyer_payment'
+            add(payment.date, 'earned', category, self._cl_label(payment), payment.amount)
         for settlement in self.settlement_ids.filtered(
                 lambda s: s.settlement_type == 'interim' and s.state == 'paid' and s.payment_id):
             add(settlement.payment_id.date, 'owed', 'payout', self.env._(
@@ -415,19 +432,42 @@ class ClRiceFarmerSeason(models.Model):
         if 'partner_id' in vals or 'season_id' in vals:
             if self.filtered(lambda fs: fs.state != 'draft'):
                 raise UserError(self.env._("The farmer and the season can only be changed on a draft farmer season."))
-        return super().write(vals)
+        res = super().write(vals)
+        if 'state' in vals:
+            self._cl_move_task(STATE_STAGES.get(vals['state']))
+        return res
+
+    def _cl_move_task(self, key):
+        """Move the farmer's task of the season project forward to the stage ``key``.
+
+        Tasks never move back: a stage set by hand further on (Planting) is kept.
+        """
+        if not key:
+            return
+        for fs in self.filtered('task_id'):
+            stage = fs.season_id._cl_task_stage(key)
+            task = fs.task_id.sudo()
+            current = task.stage_id
+            if stage and stage != current and (
+                    not current.cl_rice_stage or current.sequence < stage.sequence):
+                task.stage_id = stage
 
     @api.ondelete(at_uninstall=False)
     def _unlink_only_draft(self):
         if self.filtered(lambda fs: fs.state != 'draft'):
             raise UserError(self.env._("Only draft farmer seasons can be deleted; archive the others."))
 
+    def _cl_analytic_name(self):
+        """The season is the analytic plan already: the account only names the farmer."""
+        self.ensure_one()
+        return f"{self.partner_id.cl_farmer_code or ''} {self.partner_id.name}".strip()
+
     def _cl_create_analytic_and_task(self):
         AnalyticAccount = self.env['account.analytic.account'].sudo()
         Task = self.env['project.task'].sudo()
         for fs in self:
             fs.analytic_account_id = AnalyticAccount.create({
-                'name': f"{fs.partner_id.cl_farmer_code or ''} {fs.partner_id.name} - {fs.season_id.name}".strip(),
+                'name': fs._cl_analytic_name(),
                 'code': fs.name,
                 'plan_id': fs.season_id.analytic_plan_id.id,
                 'partner_id': fs.partner_id.id,
@@ -439,6 +479,7 @@ class ClRiceFarmerSeason(models.Model):
                     'project_id': fs.season_id.project_id.id,
                     'partner_id': fs.partner_id.id,
                     'user_ids': [(6, 0, fs.field_officer_id.ids)],
+                    'stage_id': fs.season_id._cl_task_stage('registered').id,
                 })
 
     # ------------------------------------------------------------------

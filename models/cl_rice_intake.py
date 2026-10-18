@@ -137,6 +137,7 @@ class ClRiceIntake(models.Model):
             self.partner_id,
             [{'product': self.product_id, 'qty': self.net_weight, 'lot': lot, 'bags': self.bags}],
             origin=self.name,
+            date=self.date,
         )
         self.write({'state': 'done', 'lot_id': lot.id, 'picking_id': picking.id})
         self.farmer_season_id._cl_advance_state(('active', 'harvested'), 'in_storage')

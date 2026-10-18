@@ -7,3 +7,4 @@ from . import test_removed_features
 from . import test_field_sync
 from . import test_money_protection
 from . import test_costs_analytic
+from . import test_data_accuracy

@@ -4,7 +4,7 @@ from odoo.exceptions import AccessError, UserError, ValidationError
 from .cl_rice_service_rate import SERVICE_ACCOUNTING, SERVICE_TYPES, SERVICE_UNITS
 
 # storage and milling are charged by their own documents
-JOB_SERVICE_TYPES = [item for item in SERVICE_TYPES if item[0] not in ('storage', 'milling')]
+JOB_SERVICE_TYPES = [item for item in SERVICE_TYPES if item[0] != 'milling']
 
 
 class ClRiceServiceJob(models.Model):
@@ -185,6 +185,7 @@ class ClRiceServiceJob(models.Model):
                 job._cl_pay_operator()
             job._cl_post_job_cost()
             job.state = 'charged'
+            job._cl_move_task()
             if job.amount or job.operator_paid_amount:
                 job.partner_id._cl_rice_notify('service_charged', job)
 
@@ -230,6 +231,11 @@ class ClRiceServiceJob(models.Model):
         invoice.action_post()
         fs._cl_tag_receivable_lines(invoice)
         self.invoice_id = invoice
+
+    def _cl_move_task(self):
+        stage = {'ploughing': 'land_prep', 'harrowing': 'land_prep', 'harvesting': 'harvest'}.get(self.service_type)
+        if stage:
+            self.farmer_season_id._cl_move_task(stage)
 
     def _cl_post_job_cost(self):
         """Book what the job cost the mill (fuel from the tank, operator wages) on the machine, the

@@ -27,7 +27,51 @@ class ClRiceSetup(models.TransientModel):
         string="Fuel Price per Litre", default=lambda self: self.env.company.cl_rice_fuel_price,
         help="Values the fuel used by service jobs and trips.")
     logo = fields.Binary(string="Company Logo", help="Printed on receipts, statements and gate passes.")
+    bran_price = fields.Monetary(
+        string="Bran Sale Price (per kg)", default=lambda self: self._cl_product_value('bran', 'list_price'))
+    bran_cost = fields.Monetary(
+        string="Bran Cost (per kg)", default=lambda self: self._cl_product_value('bran', 'standard_price'),
+        help="Values the bran the mill keeps: stock already held is revalued.")
+    husk_price = fields.Monetary(
+        string="Husk Sale Price (per kg)", default=lambda self: self._cl_product_value('husk', 'list_price'))
+    husk_cost = fields.Monetary(
+        string="Husk Cost (per kg)", default=lambda self: self._cl_product_value('husk', 'standard_price'))
+    archive_default_warehouse = fields.Boolean(
+        string="Archive the Unused Default Warehouse",
+        help="Archive the company's other warehouse (\"WH\") when it holds no stock, so that every operation "
+             "uses the rice mill warehouse.")
     summary = fields.Html(readonly=True)
+
+    def _cl_product_value(self, role, field_name):
+        product = self.env.ref(f'cl_rice_mill.product_{role}', raise_if_not_found=False)
+        return product.with_company(self.env.company)[field_name] if product else 0.0
+
+    def _cl_set_byproduct_prices(self, company):
+        for role in ('bran', 'husk'):
+            product = self.env.ref(f'cl_rice_mill.product_{role}').with_company(company).sudo()
+            vals = {}
+            if self[f'{role}_price'] and product.list_price != self[f'{role}_price']:
+                vals['list_price'] = self[f'{role}_price']
+            if self[f'{role}_cost'] and product.standard_price != self[f'{role}_cost']:
+                vals['standard_price'] = self[f'{role}_cost']  # revalues the stock held
+            if vals:
+                product.write(vals)
+
+    def _cl_archive_default_warehouses(self, company):
+        """Archive the company's other warehouses when nothing is stored or moving there."""
+        Warehouse = self.env['stock.warehouse'].sudo()
+        archived = Warehouse
+        for warehouse in Warehouse.search([
+                ('company_id', '=', company.id), ('id', '!=', company.cl_rice_warehouse_id.id)]):
+            stock = self.env['stock.quant'].sudo().search_count(
+                [('location_id', 'child_of', warehouse.view_location_id.id), ('quantity', '!=', 0)], limit=1)
+            moving = self.env['stock.picking'].sudo().search_count([
+                ('picking_type_id.warehouse_id', '=', warehouse.id),
+                ('state', 'not in', ('done', 'cancel'))], limit=1)
+            if not stock and not moving:
+                warehouse.active = False
+                archived |= warehouse
+        return archived
 
     def action_apply(self):
         self.ensure_one()
@@ -41,6 +85,9 @@ class ClRiceSetup(models.TransientModel):
         if self.logo:
             company.logo = self.logo
         company._cl_rice_setup_documents()
+        self._cl_set_byproduct_prices(company)
+        if self.archive_default_warehouse:
+            self._cl_archive_default_warehouses(company)
         self.env['res.company']._cl_rice_enable_analytic()
         journals = self.env['account.journal']
         if self.create_payment_journals:

@@ -41,6 +41,13 @@ class StockLot(models.Model):
             lot.cl_bag_qty = max(bags.get(lot.id, 0.0), 0.0) if lot.cl_kg_held > 0 else 0.0
             lot.cl_first_in_date = first_in.get(lot.id, False)
 
+    def _cl_bags_for_kg(self, kg):
+        """Bags taken out with ``kg`` of this lot, at the lot's average weight per bag."""
+        self.ensure_one()
+        if not self.cl_bag_qty or not self.cl_kg_held:
+            return 0.0
+        return min(round(kg * self.cl_bag_qty / self.cl_kg_held, 1), self.cl_bag_qty)
+
     def _cl_bags_for_fee(self):
         """Bags to charge storage on: the recorded bag balance, or an estimate from the weight."""
         self.ensure_one()

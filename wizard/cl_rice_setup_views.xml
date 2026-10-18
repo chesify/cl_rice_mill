@@ -19,6 +19,19 @@
                     <field name="fuel_price"/>
                     <field name="logo" widget="image" options="{'size': [0, 90]}"/>
                 </group>
+                <group string="Bran and Husk (kept and sold by the mill)">
+                    <group>
+                        <field name="bran_price"/>
+                        <field name="bran_cost"/>
+                    </group>
+                    <group>
+                        <field name="husk_price"/>
+                        <field name="husk_cost"/>
+                    </group>
+                </group>
+                <group string="Warehouse">
+                    <field name="archive_default_warehouse"/>
+                </group>
                 <footer>
                     <button name="action_apply" type="object" string="Set Up" class="btn-primary"/>
                     <button string="Cancel" special="cancel" class="btn-secondary"/>

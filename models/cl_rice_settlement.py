@@ -148,24 +148,31 @@ class ClRiceSettlement(models.Model):
         ], order='date, id')
 
     def _cl_categories(self):
-        """Map journal entries of the farmer season to settlement categories."""
+        """Map journal entries of the farmer season to (settlement category, farmer-friendly label)."""
         self.ensure_one()
         fs = self.farmer_season_id.sudo()
         categories = {}
         for loan in fs.loan_ids:
             for move in loan.payment_id.move_id | loan.move_id:
-                categories[move] = 'loan'
+                categories[move] = ('loan', fs._cl_label(loan))
         for job in fs.service_job_ids:
-            categories[job.invoice_id] = 'service'
-            categories[job.operator_move_id] = 'operator'
+            categories[job.invoice_id] = ('service', fs._cl_label(job))
+            categories[job.operator_move_id] = ('operator', fs._cl_label(job, 'operator'))
         for job in fs.milling_job_ids:
-            categories[job.invoice_id] = 'milling'
+            categories[job.invoice_id] = ('milling', fs._cl_label(job))
+        # one invoice may hold the storage of several lots
+        storage = {}
         for fee in fs.storage_fee_ids:
-            categories[fee.invoice_id] = 'storage'
+            storage.setdefault(fee.invoice_id, []).append(fee)
+        for invoice, fees in storage.items():
+            label = fs._cl_label(fees[0]) if len(fees) == 1 else self.env._(
+                "Storage for %(period)s (%(ref)s)", period=fees[0].period, ref=invoice.name)
+            categories[invoice] = ('storage', label)
         for payment in fs.payment_ids:
-            categories[payment.move_id] = 'funds_held'
+            categories[payment.move_id] = ('funds_held', fs._cl_label(payment))
         for line in self.env['cl.rice.opening.balance.line'].sudo().search([('farmer_season_id', '=', fs.id)]):
-            categories[line.move_id] = 'opening'
+            categories[line.move_id] = ('opening', fs._cl_label(line))
+        categories.pop(self.env['account.move'], None)
         return categories
 
     def _cl_statement_lines(self):
@@ -175,13 +182,14 @@ class ClRiceSettlement(models.Model):
         for sequence, item in enumerate(self._cl_open_items()):
             residual = item.amount_residual
             kind = 'owed' if residual > 0 else 'earned'
-            category = categories.get(item.move_id) or ('other_charge' if kind == 'owed' else 'other_credit')
+            category, label = categories.get(item.move_id) or (
+                'other_charge' if kind == 'owed' else 'other_credit', item.name or item.move_id.ref or item.move_id.name)
             result.append({
                 'sequence': sequence,
                 'kind': kind,
                 'category': category,
                 'date': item.date,
-                'name': item.name or item.move_id.ref or item.move_id.name,
+                'name': label,
                 'amount': abs(residual),
                 'move_line_id': item.id,
             })

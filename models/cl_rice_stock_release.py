@@ -24,7 +24,9 @@ class ClRiceStockRelease(models.Model):
     company_id = fields.Many2one(related='sale_id.company_id', store=True, index=True, precompute=True)
     currency_id = fields.Many2one('res.currency', compute='_compute_currency_id')
     quantity = fields.Float(string="Quantity (kg)", digits='Product Unit', required=True, tracking=True)
-    bags = fields.Float(digits=(16, 1), tracking=True)
+    bags = fields.Float(
+        digits=(16, 1), tracking=True, compute='_compute_bags', store=True, readonly=False,
+        help="Defaults to the lot's bags in proportion to the kg released.")
     vehicle_plate = fields.Char(string="Vehicle Plate", tracking=True)
     driver_name = fields.Char(string="Driver", tracking=True)
     state = fields.Selection(
@@ -53,6 +55,12 @@ class ClRiceStockRelease(models.Model):
     picking_id = fields.Many2one('stock.picking', string="Transfer", readonly=True, copy=False)
 
     _quantity_positive = models.Constraint('CHECK(quantity > 0 AND bags >= 0)', "The quantity must be positive.")
+
+    @api.depends('quantity', 'lot_id')
+    def _compute_bags(self):
+        for release in self:
+            if release.state == 'draft' and release.lot_id:
+                release.bags = release.lot_id._cl_bags_for_kg(release.quantity)
 
     @api.depends('company_id')
     def _compute_currency_id(self):

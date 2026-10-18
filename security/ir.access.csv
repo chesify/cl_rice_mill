@@ -84,3 +84,7 @@ access_cl_rice_trip_field_officer,cl.rice.trip.field.officer,cl.rice.trip,cl_ric
 access_cl_rice_trip_accountant,cl.rice.trip.accountant,cl.rice.trip,cl_rice_mill_group_accountant,cru,
 access_cl_rice_trip_manager,cl.rice.trip.manager,cl.rice.trip,cl_rice_mill_group_manager,crud,
 cl_rice_trip_rule_company,cl.rice.trip multi-company,cl.rice.trip,,crud,"[('company_id', 'in', company_ids)]"
+access_cl_rice_walkin_collection_warehouse,cl.rice.walkin.collection.warehouse,cl.rice.walkin.collection,cl_rice_mill_group_warehouse,cru,
+access_cl_rice_walkin_collection_accountant,cl.rice.walkin.collection.accountant,cl.rice.walkin.collection,cl_rice_mill_group_accountant,cru,
+access_cl_rice_walkin_collection_manager,cl.rice.walkin.collection.manager,cl.rice.walkin.collection,cl_rice_mill_group_manager,crud,
+cl_rice_walkin_collection_rule_company,cl.rice.walkin.collection multi-company,cl.rice.walkin.collection,,crud,"[('company_id', 'in', company_ids)]"

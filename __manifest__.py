@@ -1,6 +1,6 @@
 {
     'name': "Rice Mill (Luvanda)",
-    'version': '20.0.3.0.0',
+    'version': '20.0.4.0.0',
     'category': 'Agriculture',
     'summary': "Farmer loans and services, paddy storage, milling, stock release control and settlement",
     'description': """
@@ -48,6 +48,7 @@ and settle with them.
         'data/ir_cron_data.xml',
         'report/cl_rice_stock_release_reports.xml',
         'report/cl_rice_stock_release_templates.xml',
+        'report/cl_rice_walkin_collection_reports.xml',
         'wizard/cl_rice_reason_views.xml',
         'wizard/cl_rice_settlement_create_views.xml',
         'wizard/cl_rice_setup_views.xml',
@@ -67,6 +68,7 @@ and settle with them.
         'views/cl_rice_farmer_payment_views.xml',
         'views/cl_rice_facilitated_sale_views.xml',
         'views/cl_rice_stock_release_views.xml',
+        'views/cl_rice_walkin_collection_views.xml',
         'views/cl_rice_settlement_views.xml',
         'views/cl_rice_opening_balance_views.xml',
         'views/cl_rice_report_cash_book_views.xml',

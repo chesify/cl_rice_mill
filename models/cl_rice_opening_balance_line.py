@@ -17,6 +17,10 @@ class ClRiceOpeningBalanceLine(models.Model):
     phone = fields.Char()
     nida = fields.Char(string="NIDA")
     village = fields.Char()
+    acreage = fields.Float(digits=(16, 2), help="Acreage planted this season: the credit limit follows from it.")
+    field_officer = fields.Char(string="Field Officer (login or name)")
+    field_officer_id = fields.Many2one('res.users', string="Officer", compute='_compute_field_officer_id')
+    warning = fields.Char(readonly=True, help="Not blocking: worth checking before posting.")
     partner_id = fields.Many2one('res.partner', string="Farmer", domain="[('is_farmer', '=', True)]")
     farmer_season_id = fields.Many2one('cl.rice.farmer.season', string="Farmer Season", readonly=True, index=True)
     loan_amount = fields.Monetary(string="Loan")
@@ -39,6 +43,17 @@ class ClRiceOpeningBalanceLine(models.Model):
     def _compute_debt_total(self):
         for line in self:
             line.debt_total = sum(line[column] for column, _account, _label in DEBT_TYPES)
+
+    @api.depends('field_officer')
+    def _compute_field_officer_id(self):
+        Users = self.env['res.users'].sudo()
+        for line in self:
+            officer = Users
+            if line.field_officer:
+                value = line.field_officer.strip()
+                officer = Users.search([('login', '=ilike', value), ('share', '=', False)], limit=1) \
+                    or Users.search([('name', '=ilike', value), ('share', '=', False)], limit=1)
+            line.field_officer_id = officer
 
     def _cl_find_farmer(self):
         self.ensure_one()
@@ -80,7 +95,7 @@ class ClRiceOpeningBalanceLine(models.Model):
                 errors.append(self.env._("NIDA already used by %s", duplicates['nida'][0].name))
             if not farmer and duplicates['phone']:
                 errors.append(self.env._(
-                    "Phone already used by %(farmer)s (%(code)s): use his farmer code",
+                    "Phone already used by %(farmer)s (%(code)s): use their farmer code",
                     farmer=duplicates['phone'][0].name, code=duplicates['phone'][0].cl_farmer_code or '-'))
             if farmer and farmer.id in posted_farmers:
                 errors.append(self.env._("Opening balance already posted for this farmer and season"))
@@ -91,7 +106,39 @@ class ClRiceOpeningBalanceLine(models.Model):
                 errors.append(self.env._("Nothing to import"))
             if (line.paddy_bags and not line.paddy_kg) or (line.rice_bags and not line.rice_kg):
                 errors.append(self.env._("Bags without kg"))
+            if line.acreage < 0:
+                errors.append(self.env._("Negative acreage"))
+            if line.field_officer and not line.field_officer_id:
+                errors.append(self.env._("Field officer %s not found (use their login)", line.field_officer))
             line.error = "; ".join(errors) if errors else False
+            line.warning = line._cl_activity_warning(farmer)
+
+    def _cl_activity_warning(self, farmer):
+        """The farmer already has records this season: the opening balance may count them twice."""
+        self.ensure_one()
+        if not farmer:
+            return False
+        fs = self.env['cl.rice.farmer.season'].sudo().search(
+            [('partner_id', '=', farmer.id), ('season_id', '=', self.batch_id.season_id.id)], limit=1)
+        if not fs:
+            return False
+        activity = []
+        loans = fs.loan_ids.filtered(lambda l: l.state in ('disbursed', 'settled'))
+        if loans:
+            activity.append(self.env._("%s loans", len(loans)))
+        jobs = fs.service_job_ids.filtered(lambda j: j.state == 'charged')
+        if jobs:
+            activity.append(self.env._("%s service jobs", len(jobs)))
+        intakes = self.env['cl.rice.intake'].sudo().search_count([('farmer_season_id', '=', fs.id), ('state', '=', 'done')])
+        if intakes:
+            activity.append(self.env._("%s intakes", intakes))
+        payments = fs.payment_ids.filtered(lambda p: p.state == 'posted')
+        if payments:
+            activity.append(self.env._("%s payments", len(payments)))
+        if not activity:
+            return False
+        return self.env._(
+            "Already has activity this season (%s): check the amounts are not counted twice", ", ".join(activity))
 
     def _cl_post(self):
         self.ensure_one()
@@ -105,6 +152,7 @@ class ClRiceOpeningBalanceLine(models.Model):
                 'phone': self.phone,
                 'cl_nida_number': self.nida or False,
                 'cl_village': self.village,
+                'cl_field_officer_id': self.field_officer_id.id,
                 'company_id': company.id,
             })
         FarmerSeason = self.env['cl.rice.farmer.season'].sudo()
@@ -114,7 +162,19 @@ class ClRiceOpeningBalanceLine(models.Model):
                 'partner_id': farmer.id,
                 'season_id': batch.season_id.id,
                 'company_id': company.id,
+                'acreage': self.acreage,
+                'field_officer_id': (self.field_officer_id or farmer.cl_field_officer_id).id,
             })
+        else:
+            fs_vals = {}
+            if self.acreage and not fs.acreage:
+                fs_vals['acreage'] = self.acreage
+            if self.field_officer_id and fs.field_officer_id != self.field_officer_id:
+                fs_vals['field_officer_id'] = self.field_officer_id.id
+            if fs_vals:
+                fs.write(fs_vals)
+        if self.field_officer_id and not farmer.cl_field_officer_id:
+            farmer.cl_field_officer_id = self.field_officer_id
         if fs.state == 'draft':
             fs.action_activate()
         fs._cl_check_open()
@@ -133,6 +193,7 @@ class ClRiceOpeningBalanceLine(models.Model):
                     farmer,
                     [{'product': product, 'qty': kg, 'lot': lot, 'bags': bags}],
                     origin=batch.name,
+                    date=batch.date,
                 )
         values['picking_ids'] = [(6, 0, pickings.ids)]
         self.write(values)

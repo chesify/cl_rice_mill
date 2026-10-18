@@ -52,7 +52,9 @@ class ClRiceLoan(models.Model):
         default='cash', tracking=True)
     journal_id = fields.Many2one(
         'account.journal', string="Paid From", check_company=True,
-        domain="[('type', 'in', ('cash', 'bank'))]", tracking=True)
+        compute='_compute_journal_id', store=True, readonly=False, precompute=True,
+        domain="[('type', 'in', ('cash', 'bank'))]", tracking=True,
+        help="Follows the disbursement method: Cash, Bank or M-Pesa. Change it for another mobile money journal.")
     disbursement_date = fields.Date(readonly=True, copy=False, tracking=True)
     payment_id = fields.Many2one('account.payment', string="Payment", readonly=True, copy=False)
     move_id = fields.Many2one(
@@ -70,6 +72,14 @@ class ClRiceLoan(models.Model):
                 loan.over_limit = fs.currency_id.compare_amounts(exposure, fs.credit_limit) > 0
             else:
                 loan.over_limit = False
+
+    @api.depends('disbursement_method', 'company_id')
+    def _compute_journal_id(self):
+        Journal = self.env['account.journal']
+        for loan in self:
+            if loan.state in ('draft', 'to_approve', 'approved') and loan.disbursement_method:
+                company = loan.company_id or self.env.company
+                loan.journal_id = Journal._cl_for_method(loan.disbursement_method, company) or loan.journal_id
 
     @api.depends('company_id')
     def _compute_currency_id(self):

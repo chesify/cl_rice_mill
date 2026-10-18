@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_walkin_gate_pass" model="ir.actions.report">
+        <field name="name">Gate Pass</field>
+        <field name="model">cl.rice.walkin.collection</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">cl_rice_mill.report_walkin_gate_pass</field>
+        <field name="print_report_name">'Gate Pass - %s' % object.name</field>
+        <field name="binding_model_id" ref="model_cl_rice_walkin_collection"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_walkin_gate_pass">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2>Gate Pass <span t-field="doc.name"/></h2>
+                        <p class="text-muted">This vehicle is allowed to leave the warehouse with the goods below.</p>
+                        <table class="table table-sm table-bordered mt-3">
+                            <tbody>
+                                <tr><th class="w-25">Customer</th><td><span t-field="doc.partner_id.name"/></td></tr>
+                                <tr><th>Product</th><td><span t-field="doc.product_id.name"/></td></tr>
+                                <tr><th>Lot</th><td><span t-field="doc.lot_id.name"/></td></tr>
+                                <tr><th>Bags</th><td><span t-field="doc.bags"/></td></tr>
+                                <tr><th>Weight (kg)</th><td><span t-field="doc.quantity"/></td></tr>
+                                <tr><th>Vehicle Plate</th><td><span t-field="doc.vehicle_plate"/></td></tr>
+                                <tr><th>Driver</th><td><span t-field="doc.driver_name"/></td></tr>
+                                <tr><th>Released By</th><td><span t-field="doc.released_uid.name"/></td></tr>
+                                <tr><th>Date</th><td><span t-field="doc.released_date"/></td></tr>
+                            </tbody>
+                        </table>
+                        <div class="row mt-5">
+                            <div class="col-4 text-center"><div class="border-top pt-1">Warehouse Officer</div></div>
+                            <div class="col-4 text-center"><div class="border-top pt-1">Customer / Driver</div></div>
+                            <div class="col-4 text-center"><div class="border-top pt-1">Gate / Security</div></div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

@@ -2,6 +2,7 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
 from .product_template import LOT_SUFFIX
+from .project_task_type import TASK_STAGES
 
 
 class ClRiceSeason(models.Model):
@@ -119,6 +120,39 @@ class ClRiceSeason(models.Model):
                 'company_id': season.company_id.id,
             })
         self._cl_ensure_project_account()
+        self._cl_ensure_task_stages()
+        self._cl_detach_default_stages()
+
+    def _cl_ensure_task_stages(self):
+        """The season project gets the farmer stages (Registered ... Settled), created once."""
+        Stage = self.env['project.task.type'].sudo()
+        for season in self.filtered('project_id'):
+            project = season.project_id
+            existing = Stage.search([('project_ids', 'in', project.ids), ('cl_rice_stage', '!=', False)])
+            for sequence, (key, name) in enumerate(TASK_STAGES, start=1):
+                if key in existing.mapped('cl_rice_stage'):
+                    continue
+                Stage.create({
+                    'name': name,
+                    'sequence': sequence,
+                    'cl_rice_stage': key,
+                    'project_ids': [(4, project.id)],
+                    'fold': key == 'settled',
+                })
+
+    def _cl_detach_default_stages(self):
+        """Only the farmer stages stay on the season project (generic stages still holding its tasks stay)."""
+        Task = self.env['project.task'].sudo().with_context(active_test=False)
+        for season in self.filtered('project_id'):
+            project = season.project_id
+            for stage in project.sudo().type_ids.filtered(lambda s: not s.cl_rice_stage):
+                if not Task.search_count([('project_id', '=', project.id), ('stage_id', '=', stage.id)], limit=1):
+                    stage.project_ids = [(3, project.id)]
+
+    def _cl_task_stage(self, key):
+        self.ensure_one()
+        return self.env['project.task.type'].sudo().search(
+            [('project_ids', 'in', self.project_id.ids), ('cl_rice_stage', '=', key)], limit=1)
 
     def action_activate(self):
         self._cl_set_state('planning', 'active')

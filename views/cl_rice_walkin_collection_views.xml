@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="cl_rice_walkin_collection_view_list" model="ir.ui.view">
+        <field name="name">cl.rice.walkin.collection.view.list</field>
+        <field name="model">cl.rice.walkin.collection</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="state == 'cancelled'">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="product_id"/>
+                <field name="lot_id" optional="show"/>
+                <field name="quantity" sum="Total"/>
+                <field name="bags" sum="Total"/>
+                <field name="vehicle_plate" optional="show"/>
+                <field name="released_date" optional="show"/>
+                <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-success="state == 'released'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="cl_rice_walkin_collection_view_form" model="ir.ui.view">
+        <field name="name">cl.rice.walkin.collection.view.form</field>
+        <field name="model">cl.rice.walkin.collection</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_release" type="object" string="Release Stock" class="btn-primary"
+                            invisible="state != 'draft'" groups="cl_rice_mill.cl_rice_mill_group_warehouse"
+                            confirm="The stock leaves the warehouse with the customer. Continue?"/>
+                    <button name="action_print_gate_pass" type="object" string="Print Gate Pass"
+                            invisible="state != 'released'"/>
+                    <button name="action_cancel" type="object" string="Cancel" invisible="state != 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,released"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-warning" role="alert" invisible="state != 'draft' or not unpaid_amount">
+                        The customer still has <field name="unpaid_amount" class="fw-bold"/> of storage or milling
+                        invoices to pay: the stock cannot leave before they are paid.
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="partner_id" readonly="state != 'draft'"/>
+                            <field name="lot_id" readonly="state != 'draft'"/>
+                            <field name="product_id"/>
+                            <field name="available_qty" invisible="state != 'draft'"/>
+                            <field name="company_id" invisible="1"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="quantity" readonly="state != 'draft'"/>
+                            <field name="bags" readonly="state != 'draft'"/>
+                            <field name="vehicle_plate" readonly="state != 'draft'"/>
+                            <field name="driver_name" readonly="state != 'draft'"/>
+                            <field name="released_uid" invisible="state != 'released'"/>
+                            <field name="released_date" invisible="state != 'released'"/>
+                            <field name="picking_id" invisible="not picking_id" groups="stock.group_stock_user"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="cl_rice_walkin_collection_view_search" model="ir.ui.view">
+        <field name="name">cl.rice.walkin.collection.view.search</field>
+        <field name="model">cl.rice.walkin.collection</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="lot_id"/>
+                <field name="vehicle_plate"/>
+                <filter name="draft" string="To Release" domain="[('state', '=', 'draft')]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="cl_rice_walkin_collection_action" model="ir.actions.act_window">
+        <field name="name">Walk-in Collections</field>
+        <field name="res_model">cl.rice.walkin.collection</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Hand over milled rice to a walk-in customer</p>
+            <p>The rice of walk-in customers stays in store until they collect it. Their unpaid storage or
+                milling invoices block the collection.</p>
+        </field>
+    </record>
+</odoo>

@@ -30,6 +30,9 @@
     <menuitem id="cl_rice_stock_release_menu" name="Stock Releases" parent="cl_rice_menu_operations"
               action="cl_rice_stock_release_action" sequence="45"
               groups="cl_rice_mill.cl_rice_mill_group_warehouse,cl_rice_mill.cl_rice_mill_group_accountant"/>
+    <menuitem id="cl_rice_walkin_collection_menu" name="Walk-in Collections" parent="cl_rice_menu_operations"
+              action="cl_rice_walkin_collection_action" sequence="47"
+              groups="cl_rice_mill.cl_rice_mill_group_warehouse,cl_rice_mill.cl_rice_mill_group_accountant"/>
     <menuitem id="cl_rice_lot_menu" name="Lots" parent="cl_rice_menu_operations"
               action="cl_rice_lot_action" sequence="50"
               groups="cl_rice_mill.cl_rice_mill_group_warehouse,cl_rice_mill.cl_rice_mill_group_mill_operator,cl_rice_mill.cl_rice_mill_group_accountant"/>

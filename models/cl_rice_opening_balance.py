@@ -11,6 +11,8 @@ IMPORT_COLUMNS = {
     'phone': ['phone', 'simu'],
     'nida': ['nida', 'national id'],
     'village': ['village', 'kijiji'],
+    'acreage': ['acreage', 'acres'],
+    'field_officer': ['field officer', 'officer'],
     'loan_amount': ['loan', 'mkopo'],
     'tractor_amount': ['tractor', 'trekta'],
     'harvester_amount': ['harvester', 'kivunio'],
@@ -135,7 +137,7 @@ class ClRiceOpeningBalance(models.Model):
             vals = {'sequence': sequence}
             for index, key in header_map.items():
                 cell = row[index] if index < len(row) else None
-                if key in ('farmer_code', 'farmer_name', 'phone', 'village', 'nida'):
+                if key in ('farmer_code', 'farmer_name', 'phone', 'village', 'nida', 'field_officer'):
                     vals[key] = str(cell).strip() if cell not in (None, '') else False
                 else:
                     try:
@@ -164,7 +166,7 @@ class ClRiceOpeningBalance(models.Model):
         for column, header in enumerate(headers):
             sheet.write(0, column, header, bold)
             sheet.set_column(column, column, max(len(header) + 2, 12))
-        example = ['F00001', "Juma Mwakalinga", '255712345678', '', "Igurusi",
+        example = ['F00001', "Juma Mwakalinga", '255712345678', '', "Igurusi", 3, 'officer.login',
                    500000, 200000, 0, 40000, 0, 0, 0, 20, 1800, 0, 0]
         for column, value in enumerate(example):
             sheet.write(1, column, value)

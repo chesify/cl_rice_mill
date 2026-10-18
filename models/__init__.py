@@ -29,4 +29,8 @@ from . import cl_rice_opening_balance
 from . import cl_rice_opening_balance_line
 from . import cl_rice_field_sync
 from . import hr_expense
+from . import project_task_type
+from . import cl_rice_walkin_collection
+from . import sale_order
+from . import res_users
 from . import cl_rice_trip

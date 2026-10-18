@@ -15,14 +15,17 @@ class StockPicking(models.Model):
         return (season or self.env['cl.rice.season']._cl_current(company)).project_id
 
     @api.model
-    def _cl_rice_done_transfer(self, picking_type, location, location_dest, owner, lines, origin, partner=None):
+    def _cl_rice_done_transfer(self, picking_type, location, location_dest, owner, lines, origin, partner=None,
+                               date=None):
         """Create and validate a transfer moving exactly the given lots.
 
         :param owner: owner of the stock moved (a farmer or walk-in customer), empty for the mill
         :param lines: list of dicts with ``product``, ``qty``, ``lot`` and optionally ``bags``,
             ``owner`` (overrides the transfer owner for that line), ``location_dest`` (overrides the
             destination for that line), ``value`` (value of a mill-owned incoming line) and ``quants``
-            (source quants of an outgoing line)
+            (source quants of an outgoing line). Outgoing lines without bags take the bags of the
+            lot in proportion to the kg moved.
+        :param date: date of the operation (the intake date for instance), now when empty
         :return: the done picking
         """
         Move = self.env['stock.move'].sudo()
@@ -70,9 +73,12 @@ class StockPicking(models.Model):
                     raise UserError(self.env._(
                         "Not enough %(product)s in lot %(lot)s: %(missing)s kg missing.",
                         product=line['product'].display_name, lot=line['lot'].name, missing=round(remaining, rounding)))
-            bags_left = line.get('bags', 0.0)
+            line_bags = line.get('bags') or 0.0
+            if not line_bags and line.get('quants') is not None:
+                line_bags = line['lot']._cl_bags_for_kg(line['qty'])
+            bags_left = line_bags
             for index, (source, qty) in enumerate(sources):
-                bags = bags_left if index == len(sources) - 1 else round(line.get('bags', 0.0) * qty / line['qty'], 1)
+                bags = bags_left if index == len(sources) - 1 else round(line_bags * qty / line['qty'], 1)
                 bags_left -= bags
                 line_vals.append({
                     'move_id': move.id,
@@ -93,4 +99,11 @@ class StockPicking(models.Model):
             self.env['product.value'].sudo().create(values)
         moves.picked = True
         moves.with_context(**{RICE_TRANSFER_KEY: True})._action_done()
+        if date:
+            # the stock entered (or left) on the day of the operation, not when it was keyed in:
+            # the free storage period counts from there
+            moves.write({'date': date})
+            moves.move_line_ids.write({'date': date})
+            picking.date_done = date
+            self.env['product.value'].sudo().search([('move_id', 'in', moves.ids)]).write({'date': date})
         return picking

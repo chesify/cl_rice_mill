@@ -45,11 +45,16 @@ class ClRiceMillingJob(models.Model):
         domain="[('product_id', '=', paddy_product_id), ('cl_owner_id', '=', partner_id)]")
     available_kg = fields.Float(string="Available in Store (kg)", compute='_compute_available_kg', digits='Product Unit')
     input_kg = fields.Float(string="Paddy In (kg)", digits='Product Unit', tracking=True)
-    input_bags = fields.Float(string="Paddy Bags", digits=(16, 1))
+    input_bags = fields.Float(
+        string="Paddy Bags", digits=(16, 1), compute='_compute_input_bags', store=True, readonly=False,
+        help="Bags of paddy milled. Left empty, it follows the kg at the lot's average weight per bag.")
     rice_kg = fields.Float(string="Rice (kg)", digits='Product Unit', tracking=True)
-    rice_bags = fields.Float(string="Rice Bags", digits=(16, 1))
+    rice_bags = fields.Float(
+        string="Rice Bags", digits=(16, 1), compute='_compute_output_bags', store=True, readonly=False,
+        help="Defaults to the kg divided by the standard rice bag of the settings.")
     broken_kg = fields.Float(string="Broken Rice (kg)", digits='Product Unit')
-    broken_bags = fields.Float(string="Broken Bags", digits=(16, 1))
+    broken_bags = fields.Float(
+        string="Broken Bags", digits=(16, 1), compute='_compute_output_bags', store=True, readonly=False)
     bran_kg = fields.Float(string="Bran (kg)", digits='Product Unit')
     bran_bags = fields.Float(string="Bran Bags", digits=(16, 1))
     husk_kg = fields.Float(string="Husk (kg)", digits='Product Unit')
@@ -110,6 +115,20 @@ class ClRiceMillingJob(models.Model):
                     job.paddy_product_id, job.input_lot_id, job.partner_id, job.company_id._cl_rice_store_locations())
             else:
                 job.available_kg = 0.0
+
+    @api.depends('input_kg', 'input_lot_id')
+    def _compute_input_bags(self):
+        for job in self:
+            if job.state in ('draft', 'in_progress') and job.input_lot_id:
+                job.input_bags = job.input_lot_id._cl_bags_for_kg(job.input_kg)
+
+    @api.depends('rice_kg', 'broken_kg', 'company_id.cl_rice_rice_bag_kg')
+    def _compute_output_bags(self):
+        for job in self:
+            bag_kg = job.company_id.cl_rice_rice_bag_kg
+            if job.state in ('draft', 'in_progress') and bag_kg:
+                job.rice_bags = round(job.rice_kg / bag_kg, 1)
+                job.broken_bags = round(job.broken_kg / bag_kg, 1)
 
     @api.depends('input_kg', 'rice_kg', 'broken_kg', 'bran_kg', 'husk_kg')
     def _compute_yield(self):
@@ -205,7 +224,9 @@ class ClRiceMillingJob(models.Model):
             if job.state != 'draft':
                 raise UserError(self.env._("Only draft milling jobs can be started."))
             job.farmer_season_id._cl_check_open()
-        self.write({'state': 'in_progress', 'date_start': fields.Datetime.now()})
+        for job in self:
+            # a job keyed in afterwards keeps the start entered by the user
+            job.write({'state': 'in_progress', 'date_start': job.date_start or fields.Datetime.now()})
 
     def action_done(self):
         for job in self:
@@ -215,6 +236,7 @@ class ClRiceMillingJob(models.Model):
             job._cl_post_stock()
             job._cl_charge()
             job.write({'state': 'done', 'date_end': job.date_end or fields.Datetime.now()})
+            job.farmer_season_id._cl_move_task('milling')
             job.message_post(body=self.env._(
                 "Milled %(input)s kg of paddy: %(rice)s kg rice (%(pct)s%% recovery).",
                 input=job.input_kg, rice=job.rice_kg, pct=round(job.recovery_pct, 2)))

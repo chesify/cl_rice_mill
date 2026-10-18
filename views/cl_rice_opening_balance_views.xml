@@ -59,12 +59,15 @@
                         Some lines have errors: correct them in the grid (or in the file and import it again), then check again.
                     </div>
                     <field name="line_ids" readonly="state not in ('draft', 'validated')">
-                        <list editable="bottom" decoration-danger="error">
+                        <list editable="bottom" decoration-danger="error" decoration-warning="not error and warning">
                             <field name="sequence" widget="handle"/>
                             <field name="farmer_code"/>
                             <field name="farmer_name"/>
                             <field name="phone" optional="show"/>
                             <field name="village" optional="hide"/>
+                            <field name="nida" optional="hide"/>
+                            <field name="acreage" optional="show"/>
+                            <field name="field_officer" optional="show"/>
                             <field name="partner_id" optional="show"/>
                             <field name="currency_id" column_invisible="1"/>
                             <field name="loan_amount" sum="Total"/>
@@ -80,6 +83,7 @@
                             <field name="rice_bags" sum="Total" optional="show"/>
                             <field name="rice_kg" sum="Total" optional="show"/>
                             <field name="error"/>
+                            <field name="warning" decoration-warning="warning"/>
                             <field name="farmer_season_id" optional="hide"/>
                         </list>
                     </field>
