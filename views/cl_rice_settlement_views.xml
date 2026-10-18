@@ -28,8 +28,16 @@
                     <button name="action_compute" type="object" string="Recompute" invisible="state != 'draft'"
                             groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
                     <button name="action_confirm" type="object" string="Confirm Settlement" class="btn-primary"
-                            invisible="state != 'draft'" groups="cl_rice_mill.cl_rice_mill_group_accountant"
+                            invisible="state != 'draft' or settlement_type != 'final'"
+                            groups="cl_rice_mill.cl_rice_mill_group_accountant"
                             confirm="Everything listed is netted and the farmer season is locked. Continue?"/>
+                    <button name="action_confirm" type="object" string="Pay Out" class="btn-primary"
+                            invisible="state != 'draft' or settlement_type != 'interim'"
+                            groups="cl_rice_mill.cl_rice_mill_group_accountant"
+                            confirm="The money held first pays what the farmer owes, the rest is paid out to him. Continue?"/>
+                    <button name="action_open_stock_override" type="object" string="Allow Although Stock Is Held"
+                            invisible="state != 'draft' or settlement_type != 'final' or stock_held_kg &lt;= 0 or stock_override_reason"
+                            groups="cl_rice_mill.cl_rice_mill_group_manager"/>
                     <button name="action_pay" type="object" string="Pay Farmer" class="btn-primary"
                             invisible="state != 'confirmed'" groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
                     <button name="action_cancel" type="object" string="Cancel" invisible="state != 'draft'"/>
@@ -38,8 +46,14 @@
                     <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,paid"/>
                 </header>
                 <sheet>
+                    <div class="alert alert-warning mb-2" role="alert"
+                         invisible="stock_held_kg &lt;= 0 or settlement_type != 'final' or state != 'draft'">
+                        The farmer still has <field name="stock_held_kg" class="d-inline"/> kg in the warehouse.
+                        Release it first, or use an interim payout.
+                    </div>
                     <div class="oe_title">
                         <h1><field name="name"/></h1>
+                        <field name="settlement_type" readonly="1"/>
                     </div>
                     <group>
                         <group>
@@ -72,6 +86,22 @@
                         </group>
                     </group>
                     <notebook>
+                        <page string="Season Statement" name="statement">
+                            <field name="statement_line_ids" readonly="1">
+                                <list decoration-success="kind == 'earned'">
+                                    <field name="date"/>
+                                    <field name="category"/>
+                                    <field name="name"/>
+                                    <field name="kind" column_invisible="1"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="amount"/>
+                                </list>
+                            </field>
+                            <group class="oe_subtotal_footer">
+                                <field name="statement_charges"/>
+                                <field name="statement_receipts"/>
+                            </group>
+                        </page>
                         <page string="Due to the Farmer" name="earned">
                             <field name="earned_line_ids" readonly="1">
                                 <list>
@@ -98,6 +128,8 @@
                             <group>
                                 <field name="move_id"/>
                                 <field name="reversal_reason" invisible="not reversal_reason"/>
+                                <field name="stock_override_uid" invisible="not stock_override_uid"/>
+                                <field name="stock_override_reason" invisible="not stock_override_reason"/>
                             </group>
                         </page>
                     </notebook>

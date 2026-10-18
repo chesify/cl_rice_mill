@@ -11,6 +11,8 @@
                 <group>
                     <field name="currency_id" invisible="1"/>
                     <field name="amount" invisible="not show_amount" required="show_amount"/>
+                    <field name="show_date" invisible="1"/>
+                    <field name="date" invisible="not show_date" required="show_date"/>
                     <field name="reason" placeholder="Explain why (it is recorded in the history)"/>
                 </group>
                 <footer>

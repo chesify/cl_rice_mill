@@ -1,6 +1,8 @@
 from odoo import api, models
 from odoo.exceptions import UserError
 
+from .stock_move_line import RICE_TRANSFER_KEY
+
 
 class StockPicking(models.Model):
     _inherit = 'stock.picking'
@@ -82,5 +84,5 @@ class StockPicking(models.Model):
         if values:
             self.env['product.value'].sudo().create(values)
         moves.picked = True
-        moves._action_done()
+        moves.with_context(**{RICE_TRANSFER_KEY: True})._action_done()
         return picking

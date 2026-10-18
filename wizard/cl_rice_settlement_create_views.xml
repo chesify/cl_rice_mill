@@ -9,8 +9,10 @@
                     <field name="farmer_season_id"/>
                     <field name="company_id" invisible="1"/>
                     <field name="date"/>
-                    <field name="negative_policy" widget="radio"/>
-                    <field name="next_season_id" invisible="negative_policy != 'carry_forward'"/>
+                    <field name="settlement_type" widget="radio"/>
+                    <field name="stock_held_kg" invisible="stock_held_kg &lt;= 0"/>
+                    <field name="negative_policy" widget="radio" invisible="settlement_type != 'final'"/>
+                    <field name="next_season_id" invisible="settlement_type != 'final' or negative_policy != 'carry_forward'"/>
                     <field name="payout_journal_id"/>
                 </group>
                 <p class="text-muted">

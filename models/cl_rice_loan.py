@@ -140,7 +140,7 @@ class ClRiceLoan(models.Model):
         self._cl_approve(reason=False)
         return True
 
-    def _cl_approve(self, reason, amount=None):
+    def _cl_approve(self, reason, amount=None, date=None):
         self._cl_check_manager()
         for loan in self:
             if loan.state != 'to_approve':
@@ -227,7 +227,7 @@ class ClRiceLoan(models.Model):
             },
         }
 
-    def _cl_reverse(self, reason, amount=None):
+    def _cl_reverse(self, reason, amount=None, date=None):
         self.ensure_one()
         self._cl_check_manager()
         if self.state != 'disbursed':

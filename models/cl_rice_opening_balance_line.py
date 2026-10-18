@@ -15,6 +15,7 @@ class ClRiceOpeningBalanceLine(models.Model):
     farmer_code = fields.Char()
     farmer_name = fields.Char()
     phone = fields.Char()
+    nida = fields.Char(string="NIDA")
     village = fields.Char()
     partner_id = fields.Many2one('res.partner', string="Farmer", domain="[('is_farmer', '=', True)]")
     farmer_season_id = fields.Many2one('cl.rice.farmer.season', string="Farmer Season", readonly=True, index=True)
@@ -74,6 +75,13 @@ class ClRiceOpeningBalanceLine(models.Model):
             if key in seen:
                 errors.append(self.env._("Duplicate farmer in the file"))
             seen.add(key)
+            duplicates = self.env['res.partner']._cl_find_duplicates(nida=line.nida, phone=line.phone, exclude=farmer)
+            if duplicates['nida']:
+                errors.append(self.env._("NIDA already used by %s", duplicates['nida'][0].name))
+            if not farmer and duplicates['phone']:
+                errors.append(self.env._(
+                    "Phone already used by %(farmer)s (%(code)s): use his farmer code",
+                    farmer=duplicates['phone'][0].name, code=duplicates['phone'][0].cl_farmer_code or '-'))
             if farmer and farmer.id in posted_farmers:
                 errors.append(self.env._("Opening balance already posted for this farmer and season"))
             amounts = [line[column] for column, _account, _label in DEBT_TYPES]
@@ -95,6 +103,7 @@ class ClRiceOpeningBalanceLine(models.Model):
                 'name': self.farmer_name,
                 'is_farmer': True,
                 'phone': self.phone,
+                'cl_nida_number': self.nida or False,
                 'cl_village': self.village,
                 'company_id': company.id,
             })

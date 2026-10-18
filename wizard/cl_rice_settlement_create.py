@@ -9,6 +9,13 @@ class ClRiceSettlementCreate(models.TransientModel):
     farmer_season_id = fields.Many2one('cl.rice.farmer.season', required=True, readonly=True)
     company_id = fields.Many2one(related='farmer_season_id.company_id')
     date = fields.Date(required=True, default=fields.Date.context_today)
+    settlement_type = fields.Selection(
+        [
+            ('final', "Final settlement (locks the season)"),
+            ('interim', "Interim payout (season stays open)"),
+        ],
+        string="Type", default='final', required=True)
+    stock_held_kg = fields.Float(string="Stock Still Held (kg)", related='farmer_season_id.stock_held_kg')
     negative_policy = fields.Selection(
         [
             ('carry_forward', "Carry forward to next season (opening loan)"),
@@ -31,6 +38,7 @@ class ClRiceSettlementCreate(models.TransientModel):
         settlement = self.env['cl.rice.settlement'].create({
             'farmer_season_id': fs.id,
             'date': self.date,
+            'settlement_type': self.settlement_type,
             'negative_policy': self.negative_policy,
             'next_season_id': self.next_season_id.id,
             'payout_journal_id': self.payout_journal_id.id,

@@ -1,5 +1,8 @@
+import re
+
 from odoo import api, fields, models
 from odoo.exceptions import AccessError, ValidationError
+from odoo.fields import Domain
 
 SENSITIVE_GROUPS = 'cl_rice_mill.cl_rice_mill_group_accountant'
 
@@ -45,14 +48,69 @@ class ResPartner(models.Model):
     cl_client_uuid = fields.Char(
         string="Field App ID", readonly=True, copy=False,
         help="Identifier given by the field app; a registration sent twice is only created once.")
+    cl_possible_duplicate_ids = fields.Many2many(
+        'res.partner', string="Possible Duplicates", compute='_compute_cl_possible_duplicate_ids',
+        help="Other farmers with the same phone number.")
     cl_farmer_season_ids = fields.One2many('cl.rice.farmer.season', 'partner_id', string="Farmer Seasons")
     cl_farmer_season_count = fields.Integer(compute='_compute_cl_farmer_season_count')
 
+    _cl_nida_uniq = models.UniqueIndex(
+        "(regexp_replace(upper(cl_nida_number), '[^0-9A-Z]', '', 'g'), COALESCE(company_id, 0)) "
+        "WHERE cl_nida_number IS NOT NULL AND cl_nida_number != ''",
+        "Another farmer is already registered with this National ID (NIDA).")
     _cl_client_uuid_uniq = models.UniqueIndex(
         '(cl_client_uuid) WHERE cl_client_uuid IS NOT NULL', "This field registration was already received.")
     _cl_farmer_code_uniq = models.UniqueIndex(
         '(cl_farmer_code, company_id) WHERE cl_farmer_code IS NOT NULL',
         "The farmer code must be unique.")
+
+    @api.depends('phone', 'is_farmer')
+    def _compute_cl_possible_duplicate_ids(self):
+        for partner in self:
+            partner.cl_possible_duplicate_ids = partner.is_farmer and self._cl_find_duplicates(
+                phone=partner.phone, exclude=partner._origin)['phone']
+
+    @api.model
+    def _cl_normalize_phone(self, phone):
+        """Last 9 digits of a Tanzanian number: 0712 345 678, +255 712 345 678 and 712345678 match."""
+        digits = re.sub(r'\D', '', phone or '')
+        return digits[-9:] if len(digits) >= 9 else ''
+
+    @api.model
+    def _cl_normalize_nida(self, nida):
+        return re.sub(r'[^0-9A-Z]', '', (nida or '').upper())
+
+    @api.model
+    def _cl_find_duplicates(self, nida=None, phone=None, exclude=None):
+        """Farmers already registered with the same NIDA or phone (same company).
+
+        Used by every registration path: the farmer form, the field app, the opening balance
+        import and the website. Runs as superuser: a field officer must be warned about a
+        duplicate even if the other farmer is not his.
+        :return: {'nida': partners, 'phone': partners}
+        """
+        Partner = self.sudo().with_context(active_test=False)
+        result = {'nida': Partner.browse(), 'phone': Partner.browse()}
+        exclude_ids = (exclude or Partner.browse()).ids
+        base = Domain('is_farmer', '=', True) & Domain('id', 'not in', exclude_ids)
+        if nida and self._cl_normalize_nida(nida):
+            candidates = Partner.search(base & Domain('cl_nida_number', '!=', False))
+            target = self._cl_normalize_nida(nida)
+            result['nida'] = candidates.filtered(lambda p: self._cl_normalize_nida(p.cl_nida_number) == target)
+        normalized = self._cl_normalize_phone(phone)
+        if normalized:
+            candidates = Partner.search(base & Domain('phone', '!=', False))
+            result['phone'] = candidates.filtered(lambda p: self._cl_normalize_phone(p.phone) == normalized)
+        return result
+
+    @api.constrains('cl_nida_number', 'is_farmer')
+    def _check_cl_nida_unique(self):
+        for partner in self.filtered(lambda p: p.is_farmer and p.sudo().cl_nida_number):
+            duplicates = self._cl_find_duplicates(nida=partner.sudo().cl_nida_number, exclude=partner)['nida']
+            duplicates = duplicates.filtered(lambda p: p.company_id == partner.company_id)
+            if duplicates:
+                raise ValidationError(self.env._(
+                    "Farmer %(other)s is already registered with this National ID (NIDA).", other=duplicates[0].name))
 
     def _compute_cl_farmer_season_count(self):
         counts = dict(self.env['cl.rice.farmer.season']._read_group(

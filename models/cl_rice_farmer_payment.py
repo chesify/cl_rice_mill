@@ -157,7 +157,7 @@ class ClRiceFarmerPayment(models.Model):
             raise UserError(self.env._("A received payment can only be cancelled by a manager, with a reason."))
         self.state = 'cancelled'
 
-    def _cl_reverse(self, reason, amount=None):
+    def _cl_reverse(self, reason, amount=None, date=None):
         self.ensure_one()
         self._cl_check_manager()
         if self.state != 'posted':

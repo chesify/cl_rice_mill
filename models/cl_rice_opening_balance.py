@@ -9,6 +9,7 @@ IMPORT_COLUMNS = {
     'farmer_code': ['farmer code', 'namba ya mkulima'],
     'farmer_name': ['farmer name', 'jina la mkulima'],
     'phone': ['phone', 'simu'],
+    'nida': ['nida', 'national id'],
     'village': ['village', 'kijiji'],
     'loan_amount': ['loan', 'mkopo'],
     'tractor_amount': ['tractor', 'trekta'],
@@ -134,7 +135,7 @@ class ClRiceOpeningBalance(models.Model):
             vals = {'sequence': sequence}
             for index, key in header_map.items():
                 cell = row[index] if index < len(row) else None
-                if key in ('farmer_code', 'farmer_name', 'phone', 'village'):
+                if key in ('farmer_code', 'farmer_name', 'phone', 'village', 'nida'):
                     vals[key] = str(cell).strip() if cell not in (None, '') else False
                 else:
                     try:
@@ -163,7 +164,7 @@ class ClRiceOpeningBalance(models.Model):
         for column, header in enumerate(headers):
             sheet.write(0, column, header, bold)
             sheet.set_column(column, column, max(len(header) + 2, 12))
-        example = ['F00001', "Juma Mwakalinga", '255712345678', "Igurusi",
+        example = ['F00001', "Juma Mwakalinga", '255712345678', '', "Igurusi",
                    500000, 200000, 0, 40000, 0, 0, 0, 20, 1800, 0, 0]
         for column, value in enumerate(example):
             sheet.write(1, column, value)
@@ -217,7 +218,7 @@ class ClRiceOpeningBalance(models.Model):
     def _cl_reason_actions(self):
         return {'reverse': self._cl_reverse}
 
-    def _cl_reverse(self, reason, amount=None):
+    def _cl_reverse(self, reason, amount=None, date=None):
         """Reverse the whole batch: opening entries and opening stock."""
         self.ensure_one()
         self._cl_check_rights()

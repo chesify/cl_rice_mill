@@ -13,7 +13,7 @@ class ClRiceFacilitatedSale(models.Model):
         string="Reference", required=True, readonly=True, copy=False, default=lambda self: self.env._("New"))
     farmer_season_id = fields.Many2one(
         'cl.rice.farmer.season', string="Farmer Season", required=True, index=True, tracking=True,
-        check_company=True, domain="[('state', 'in', ('harvested', 'in_storage', 'released'))]")
+        check_company=True, domain="[('state', 'in', ('harvested', 'in_storage', 'released', 'settled'))]")
     partner_id = fields.Many2one(related='farmer_season_id.partner_id', store=True, string="Farmer", index=True)
     season_id = fields.Many2one(related='farmer_season_id.season_id', store=True, index=True)
     field_officer_id = fields.Many2one(related='farmer_season_id.field_officer_id', store=True, index=True)
@@ -113,7 +113,7 @@ class ClRiceFacilitatedSale(models.Model):
                 vals['name'] = self.env['ir.sequence'].with_company(company).next_by_code(
                     'cl.rice.facilitated.sale') or '/'
         sales = super().create(vals_list)
-        sales.farmer_season_id._cl_check_open()
+        sales.farmer_season_id._cl_check_open_for_release()
         return sales
 
     def write(self, vals):
@@ -147,7 +147,7 @@ class ClRiceFacilitatedSale(models.Model):
         self.ensure_one()
         if self.state in ('done', 'cancelled'):
             raise UserError(self.env._("This sale is closed."))
-        self.farmer_season_id._cl_check_open()
+        self.farmer_season_id._cl_check_open_for_release()
         pending = sum(self.release_ids.filtered(lambda r: r.state in ('draft', 'cleared')).mapped('quantity'))
         quantity = max(min(self.remaining_qty - pending, self.available_qty), 0.0)
         bags = self.bags * quantity / self.quantity if self.quantity else 0.0

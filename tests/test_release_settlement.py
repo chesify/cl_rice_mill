@@ -110,10 +110,11 @@ class TestReleaseSettlement(ClRiceCommon):
         with self.assertRaises(UserError):
             self.env['cl.rice.reason'].with_user(self.user_manager).create({
                 'res_model': 'cl.rice.stock.release', 'res_id': release.id, 'action': 'override', 'reason': "  ",
+                'date': '2026-11-15',
             }).action_confirm()
         self.env['cl.rice.reason'].with_user(self.user_manager).create({
             'res_model': 'cl.rice.stock.release', 'res_id': release.id, 'action': 'override',
-            'reason': "Buyer is the farmer's cooperative, pays next week",
+            'reason': "Buyer is the farmer's cooperative, pays next week", 'date': '2026-11-15',
         }).action_confirm()
         self.assertEqual(release.state, 'cleared')
         self.assertEqual(release.clearance_basis, 'override')
@@ -194,7 +195,11 @@ class TestReleaseSettlement(ClRiceCommon):
         wizard = self.env['cl.rice.settlement.create'].with_user(self.user_accountant).with_context(
             action['context']).create({'payout_journal_id': self.cash_journal.id, **vals})
         result = wizard.action_create()
-        return self.env['cl.rice.settlement'].with_user(self.user_accountant).browse(result['res_id'])
+        settlement = self.env['cl.rice.settlement'].with_user(self.user_accountant).browse(result['res_id'])
+        if settlement.settlement_type == 'final' and settlement.stock_held_kg:
+            # these tests settle with rice still in store: a manager allows it
+            settlement.with_user(self.user_manager)._cl_stock_override("Farmer keeps his rice for now")
+        return settlement
 
     def test_settlement_with_funds_held(self):
         self._disburse(self._create_loan(self.fs, 300_000))
@@ -204,7 +209,8 @@ class TestReleaseSettlement(ClRiceCommon):
         self.assertEqual(settlement.owed_total, 350_000)
         self.assertEqual(settlement.earned_total, 1_000_000)
         self.assertEqual(settlement.net_amount, 650_000)
-        self.assertEqual(set(settlement.line_ids.mapped('category')), {'loan', 'milling', 'funds_held'})
+        open_lines = settlement.owed_line_ids | settlement.earned_line_ids
+        self.assertEqual(set(open_lines.mapped('category')), {'loan', 'milling', 'funds_held'})
         settlement.action_confirm()
         self.fs.invalidate_recordset()
         self.assertEqual(self.fs.state, 'settled')

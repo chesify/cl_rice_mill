@@ -29,11 +29,29 @@ class ClRiceSettlement(models.Model):
         ],
         default='draft', required=True, tracking=True, copy=False, index=True)
 
+    settlement_type = fields.Selection(
+        [
+            ('final', "Final settlement (locks the season)"),
+            ('interim', "Interim payout (season stays open)"),
+        ],
+        string="Type", default='final', required=True, readonly=True, tracking=True)
     line_ids = fields.One2many('cl.rice.settlement.line', 'settlement_id', string="Lines")
     owed_line_ids = fields.One2many(
-        'cl.rice.settlement.line', 'settlement_id', domain=[('kind', '=', 'owed')], string="Owed")
+        'cl.rice.settlement.line', 'settlement_id',
+        domain=[('line_type', '=', 'open'), ('kind', '=', 'owed')], string="Owed")
     earned_line_ids = fields.One2many(
-        'cl.rice.settlement.line', 'settlement_id', domain=[('kind', '=', 'earned')], string="Earned")
+        'cl.rice.settlement.line', 'settlement_id',
+        domain=[('line_type', '=', 'open'), ('kind', '=', 'earned')], string="Earned")
+    statement_line_ids = fields.One2many(
+        'cl.rice.settlement.line', 'settlement_id', domain=[('line_type', '=', 'statement')],
+        string="Season Statement")
+    statement_charges = fields.Monetary(string="Season Charges", compute='_compute_totals', store=True)
+    statement_receipts = fields.Monetary(string="Season Receipts", compute='_compute_totals', store=True)
+    stock_held_kg = fields.Float(
+        string="Stock Still Held (kg)", digits='Product Unit', readonly=True, copy=False,
+        help="Farmer-owned stock still in the warehouse when the statement was prepared.")
+    stock_override_reason = fields.Text(readonly=True, copy=False)
+    stock_override_uid = fields.Many2one('res.users', string="Stock Override By", readonly=True, copy=False)
     owed_total = fields.Monetary(string="Total Owed", compute='_compute_totals', store=True)
     earned_total = fields.Monetary(string="Total Earned", compute='_compute_totals', store=True)
     net_amount = fields.Monetary(
@@ -59,12 +77,16 @@ class ClRiceSettlement(models.Model):
     previous_fs_state = fields.Char(readonly=True, copy=False)
     reversal_reason = fields.Text(readonly=True, copy=False)
 
-    @api.depends('line_ids.amount', 'line_ids.kind')
+    @api.depends('line_ids.amount', 'line_ids.kind', 'line_ids.line_type')
     def _compute_totals(self):
         for settlement in self:
-            settlement.owed_total = sum(settlement.line_ids.filtered(lambda l: l.kind == 'owed').mapped('amount'))
-            settlement.earned_total = sum(settlement.line_ids.filtered(lambda l: l.kind == 'earned').mapped('amount'))
+            open_lines = settlement.line_ids.filtered(lambda l: l.line_type == 'open')
+            statement = settlement.line_ids - open_lines
+            settlement.owed_total = sum(open_lines.filtered(lambda l: l.kind == 'owed').mapped('amount'))
+            settlement.earned_total = sum(open_lines.filtered(lambda l: l.kind == 'earned').mapped('amount'))
             settlement.net_amount = settlement.earned_total - settlement.owed_total
+            settlement.statement_charges = sum(statement.filtered(lambda l: l.kind == 'owed').mapped('amount'))
+            settlement.statement_receipts = sum(statement.filtered(lambda l: l.kind == 'earned').mapped('amount'))
 
     @api.depends('company_id')
     def _compute_currency_id(self):
@@ -105,7 +127,14 @@ class ClRiceSettlement(models.Model):
             fs = settlement.farmer_season_id
             fs._cl_check_open()
             settlement.line_ids.unlink()
-            settlement.line_ids = [(0, 0, vals) for vals in settlement._cl_statement_lines()]
+            statement = [dict(vals, line_type='statement') for vals in fs.sudo()._cl_statement_breakdown()]
+            settlement.write({
+                'line_ids': [(0, 0, vals) for vals in settlement._cl_statement_lines() + statement],
+                'stock_held_kg': fs._cl_stock_held_kg(),
+            })
+
+    def _cl_open_lines(self):
+        return self.line_ids.filtered(lambda l: l.line_type == 'open')
 
     def _cl_open_items(self):
         """Open receivable and payable items of the farmer season."""
@@ -167,11 +196,21 @@ class ClRiceSettlement(models.Model):
             if settlement.state != 'draft':
                 raise UserError(self.env._("Only draft settlements can be confirmed."))
             settlement.farmer_season_id._cl_check_open()
+            if settlement.settlement_type == 'interim':
+                settlement._cl_post_interim()
+                continue
+            open_lines = settlement._cl_open_lines()
             if not settlement.line_ids:
                 raise UserError(self.env._("There is nothing to settle: compute the statement first."))
-            stale = settlement.line_ids.move_line_id.filtered(lambda l: l.reconciled)
-            if stale or set(settlement._cl_open_items().ids) != set(settlement.line_ids.move_line_id.ids):
+            stale = open_lines.move_line_id.filtered(lambda l: l.reconciled)
+            if stale or set(settlement._cl_open_items().ids) != set(open_lines.move_line_id.ids):
                 raise UserError(self.env._("The farmer's account changed since the statement was computed: recompute it."))
+            held = settlement.farmer_season_id._cl_stock_held_kg()
+            if held > 0 and not settlement.stock_override_reason:
+                raise UserError(self.env._(
+                    "%(farmer)s still has %(kg)s kg in the warehouse. Release the stock first, pay out with an "
+                    "interim payout, or ask a manager to override with a reason.",
+                    farmer=settlement.partner_id.name, kg=round(held, 2)))
             if settlement.currency_id.compare_amounts(settlement.net_amount, 0) < 0 \
                     and settlement.negative_policy == 'carry_forward' and not settlement.next_season_id:
                 raise UserError(self.env._("Choose the next season the remaining balance is carried to."))
@@ -187,7 +226,8 @@ class ClRiceSettlement(models.Model):
             raise UserError(self.env._("Set the settlement journal in the Rice Mill settings."))
         label = self.env._("Settlement %(ref)s - %(farmer)s", ref=self.name, farmer=partner.name)
         line_vals = []
-        for line in self.line_ids:
+        open_lines = self._cl_open_lines()
+        for line in open_lines:
             item = line.move_line_id
             line_vals.append({
                 'name': line.name,
@@ -225,19 +265,21 @@ class ClRiceSettlement(models.Model):
                     'debit': -net,
                     'cl_farmer_season_id': fs.id,
                 })
-        move = self.env['account.move'].sudo().create({
-            'move_type': 'entry',
-            'journal_id': journal.id,
-            'date': self.date,
-            'ref': label,
-            'cl_farmer_season_id': fs.id,
-            'company_id': company.id,
-            'line_ids': [(0, 0, vals) for vals in line_vals],
-        })
-        move.action_post()
+        move = self.env['account.move']
+        if line_vals:
+            move = self.env['account.move'].sudo().create({
+                'move_type': 'entry',
+                'journal_id': journal.id,
+                'date': self.date,
+                'ref': label,
+                'cl_farmer_season_id': fs.id,
+                'company_id': company.id,
+                'line_ids': [(0, 0, vals) for vals in line_vals],
+            })
+            move.action_post()
         # reconcile every settled item with its counterpart
-        counterparts = move.line_ids.sorted('id')[:len(self.line_ids)]
-        for line, counterpart in zip(self.line_ids, counterparts):
+        counterparts = move.line_ids.sorted('id')[:len(open_lines)]
+        for line, counterpart in zip(open_lines, counterparts):
             (line.move_line_id | counterpart).reconcile()
         values = {'move_id': move.id, 'previous_fs_state': fs.state}
         if carry_fs:
@@ -262,6 +304,40 @@ class ClRiceSettlement(models.Model):
             net=self.currency_id.format(net)))
         if self.state == 'paid':
             partner._cl_rice_notify('settlement_paid', self)
+
+    def _cl_post_interim(self):
+        """Interim payout: the money held first pays the farmer's balance, the rest is paid out;
+        the season stays open."""
+        self.ensure_one()
+        fs = self.farmer_season_id
+        if not self.payout_journal_id:
+            raise UserError(self.env._("Choose the journal the farmer is paid from."))
+        applied = fs.sudo()._cl_apply_funds_held()
+        application = self.env['account.move']
+        if applied:
+            application = self.env['account.move'].sudo().search(
+                [('cl_farmer_season_id', '=', fs.id), ('journal_id', '=', self.company_id.cl_rice_settlement_journal_id.id)],
+                order='id desc', limit=1)
+        funds_account = self.company_id.cl_rice_funds_held_account_id
+        funds_lines = self.env['account.move.line'].sudo().search([
+            ('cl_farmer_season_id', '=', fs.id),
+            ('parent_state', '=', 'posted'),
+            ('account_id', '=', funds_account.id),
+            ('reconciled', '=', False),
+            ('amount_residual', '<', 0),
+        ])
+        amount = -sum(funds_lines.mapped('amount_residual'))
+        if self.currency_id.compare_amounts(amount, 0) <= 0:
+            raise UserError(self.env._(
+                "Nothing can be paid out: the money held for %s does not cover what he owes.", self.partner_id.name))
+        payment = self._cl_create_payout(amount, funds_account)
+        (payment.move_id.line_ids.filtered(lambda l: l.account_id == funds_account) | funds_lines).reconcile()
+        self.write({'state': 'paid', 'payment_id': payment.id, 'move_id': application.id})
+        self.message_post(body=self.env._(
+            "Interim payout of %(amount)s by %(user)s (%(applied)s first applied to the balance).",
+            amount=self.currency_id.format(amount), user=self.env.user.name,
+            applied=self.currency_id.format(applied)))
+        self.partner_id._cl_rice_notify('settlement_paid', self)
 
     def _cl_next_farmer_season(self):
         self.ensure_one()
@@ -301,26 +377,7 @@ class ClRiceSettlement(models.Model):
         payable_account = partner.with_company(company).property_account_payable_id
         payout_line = self.move_id.line_ids.filtered(
             lambda l: l.account_id == payable_account and l.credit and not l.reconciled)
-        sudo_partner = partner.sudo()
-        memo = self.env._("Settlement %(ref)s payout (%(method)s %(phone)s)",
-                          ref=self.name,
-                          method=dict(sudo_partner._fields['cl_payout_method']._description_selection(self.env)).get(
-                              sudo_partner.cl_payout_method, ''),
-                          phone=sudo_partner.cl_payout_phone or '')
-        payment = self.env['account.payment'].sudo().create({
-            'payment_type': 'outbound',
-            'partner_type': 'supplier',
-            'partner_id': partner.id,
-            'amount': self.net_amount,
-            'date': fields.Date.context_today(self),
-            'journal_id': self.payout_journal_id.id,
-            'payment_method_line_id': self.payout_journal_id._cl_outbound_method_line().id,
-            'destination_account_id': payable_account.id,
-            'partner_bank_id': sudo_partner.cl_payout_bank_id.id if sudo_partner.cl_payout_method == 'bank' else False,
-            'memo': memo,
-            'company_id': company.id,
-        })
-        payment.action_post()
+        payment = self._cl_create_payout(self.net_amount, payable_account)
         (payment.move_id.line_ids.filtered(lambda l: l.account_id == payable_account) | payout_line).reconcile()
         self.write({'payment_id': payment.id, 'state': 'paid'})
         self.message_post(body=self.env._(
@@ -328,6 +385,30 @@ class ClRiceSettlement(models.Model):
             amount=self.currency_id.format(self.net_amount), user=self.env.user.name,
             journal=self.payout_journal_id.name))
         partner._cl_rice_notify('settlement_paid', self)
+
+    def _cl_create_payout(self, amount, account):
+        self.ensure_one()
+        partner = self.partner_id.sudo()
+        memo = self.env._("Settlement %(ref)s payout (%(method)s %(phone)s)",
+                          ref=self.name,
+                          method=dict(partner._fields['cl_payout_method']._description_selection(self.env)).get(
+                              partner.cl_payout_method, ''),
+                          phone=partner.cl_payout_phone or '')
+        payment = self.env['account.payment'].sudo().create({
+            'payment_type': 'outbound',
+            'partner_type': 'supplier',
+            'partner_id': partner.id,
+            'amount': amount,
+            'date': fields.Date.context_today(self),
+            'journal_id': self.payout_journal_id.id,
+            'payment_method_line_id': self.payout_journal_id._cl_outbound_method_line().id,
+            'destination_account_id': account.id,
+            'partner_bank_id': partner.cl_payout_bank_id.id if partner.cl_payout_method == 'bank' else False,
+            'memo': memo,
+            'company_id': self.company_id.id,
+        })
+        payment.action_post()
+        return payment
 
     # ------------------------------------------------------------------
     # Corrections
@@ -350,9 +431,31 @@ class ClRiceSettlement(models.Model):
         }
 
     def _cl_reason_actions(self):
-        return {'reverse': self._cl_reverse}
+        return {'reverse': self._cl_reverse, 'stock_override': self._cl_stock_override}
 
-    def _cl_reverse(self, reason, amount=None):
+    def action_open_stock_override(self):
+        self.ensure_one()
+        self._cl_check_manager()
+        return {
+            'name': self.env._("Settle Although Stock Is Held"),
+            'type': 'ir.actions.act_window',
+            'res_model': 'cl.rice.reason',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_res_model': self._name, 'default_res_id': self.id, 'default_action': 'stock_override'},
+        }
+
+    def _cl_stock_override(self, reason, amount=None, date=None):
+        self.ensure_one()
+        self._cl_check_manager()
+        if self.state != 'draft':
+            raise UserError(self.env._("Only a draft settlement can be overridden."))
+        self.write({'stock_override_reason': reason, 'stock_override_uid': self.env.uid})
+        self.message_post(body=self.env._(
+            "Final settlement allowed by %(user)s although %(kg)s kg are still held. Reason: %(reason)s",
+            user=self.env.user.name, kg=round(self.stock_held_kg, 2), reason=reason))
+
+    def _cl_reverse(self, reason, amount=None, date=None):
         """Undo a settlement: the payout and the netting entry are reversed and the farmer season reopens."""
         self.ensure_one()
         self._cl_check_manager()
@@ -372,8 +475,9 @@ class ClRiceSettlement(models.Model):
         if self.carry_loan_id:
             self.carry_loan_id.sudo().state = 'cancelled'
         fs = self.farmer_season_id
-        fs.loan_ids.filtered(lambda l: l.state == 'settled').sudo().state = 'disbursed'
-        fs.sudo().with_context(cl_rice_unlock=True).state = self.previous_fs_state or 'released'
+        if self.settlement_type == 'final':
+            fs.loan_ids.filtered(lambda l: l.state == 'settled').sudo().state = 'disbursed'
+            fs.sudo().with_context(cl_rice_unlock=True).state = self.previous_fs_state or 'released'
         self.write({'state': 'reversed', 'reversal_reason': reason})
         message = self.env._(
             "Settlement reversed by %(user)s. Reason: %(reason)s", user=self.env.user.name, reason=reason)

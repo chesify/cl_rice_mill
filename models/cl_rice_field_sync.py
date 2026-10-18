@@ -126,6 +126,11 @@ class ClRiceFieldSync(models.AbstractModel):
         name = (data.get('name') or '').strip()
         if not name:
             raise UserError(self.env._("The farmer's name is required."))
+        duplicates = self.env['res.partner']._cl_find_duplicates(phone=data.get('phone'))['phone']
+        note = ''
+        if duplicates:
+            # kept as pending: the office decides whether it is the same person
+            note = self.env._("Possible duplicate of %s (same phone).", ", ".join(duplicates.mapped('name')))
         try:
             latitude = float(data.get('latitude') or 0.0)
             longitude = float(data.get('longitude') or 0.0)
@@ -144,4 +149,5 @@ class ClRiceFieldSync(models.AbstractModel):
             'cl_farm_longitude': longitude,
             'cl_field_officer_id': self.env.uid,
             'cl_client_uuid': uuid,
+            'comment': note,
         })

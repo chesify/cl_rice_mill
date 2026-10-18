@@ -45,6 +45,7 @@ class ClRiceStockRelease(models.Model):
     balance_at_clearance = fields.Monetary(string="Balance When Cleared", readonly=True, copy=False)
     funds_applied = fields.Monetary(string="Buyer Money Applied", readonly=True, copy=False)
     override_reason = fields.Text(readonly=True, copy=False)
+    override_promised_date = fields.Date(string="Promised Payment", readonly=True, copy=False, tracking=True)
     cleared_uid = fields.Many2one('res.users', string="Authorised By", readonly=True, copy=False)
     cleared_date = fields.Datetime(string="Authorised On", readonly=True, copy=False)
     released_uid = fields.Many2one('res.users', string="Released By", readonly=True, copy=False)
@@ -67,7 +68,7 @@ class ClRiceStockRelease(models.Model):
             if vals.get('name', self.env._("New")) == self.env._("New"):
                 vals['name'] = self.env['ir.sequence'].with_company(company).next_by_code('cl.rice.stock.release') or '/'
         releases = super().create(vals_list)
-        releases.farmer_season_id._cl_check_open()
+        releases.farmer_season_id._cl_check_open_for_release()
         return releases
 
     def write(self, vals):
@@ -113,7 +114,7 @@ class ClRiceStockRelease(models.Model):
             raise UserError(self.env._("Release %s is already processed.", self.name))
         if self.sale_id.state in ('done', 'cancelled'):
             raise UserError(self.env._("The sale is closed."))
-        self.farmer_season_id._cl_check_open()
+        self.farmer_season_id._cl_check_open_for_release()
         self._cl_check_quantity()
 
     # ------------------------------------------------------------------
@@ -169,15 +170,19 @@ class ClRiceStockRelease(models.Model):
             'context': {'default_res_model': self._name, 'default_res_id': self.id, 'default_action': 'override'},
         }
 
-    def _cl_override(self, reason, amount=None):
-        """Manager override: clear the release although the farmer still owes."""
+    def _cl_override(self, reason, amount=None, date=None):
+        """Manager override: clear the release although the farmer still owes; the promised payment
+        is followed up by the office."""
         self.ensure_one()
         self._cl_check_manager()
         if not (reason or '').strip():
             raise UserError(self.env._("A reason is required to override the release block."))
+        if not date:
+            raise UserError(self.env._("Enter the date the farmer promised to pay."))
         self._cl_check_can_clear()
         balance = self.farmer_season_id._cl_balance_owed()
-        self.write({'override_reason': reason})
+        self.write({'override_reason': reason, 'override_promised_date': date})
+        self._cl_schedule_follow_up(balance, date)
         self._cl_mark_cleared({'balance_at_clearance': balance, 'clearance_basis': 'override'})
         message = self.env._(
             "Release block overridden by %(user)s while the farmer owes %(balance)s. Reason: %(reason)s",
@@ -195,7 +200,7 @@ class ClRiceStockRelease(models.Model):
         for release in self:
             if release.state != 'cleared':
                 raise UserError(self.env._("Release %s must be cleared first.", release.name))
-            release.farmer_season_id._cl_check_open()
+            release.farmer_season_id._cl_check_open_for_release()
             release._cl_check_quantity()
             release._cl_move_stock()
             release.sale_id._cl_update_state()
@@ -242,6 +247,24 @@ class ClRiceStockRelease(models.Model):
         not_cleared = self.filtered(lambda r: r.state not in ('cleared', 'released'))
         if not_cleared:
             raise UserError(self.env._("The gate pass can only be printed for a cleared release (%s).", not_cleared[0].name))
+
+    def _cl_schedule_follow_up(self, balance, date):
+        """Remind the office to collect the promised payment on the promised date."""
+        self.ensure_one()
+        accountants = self.env.ref('cl_rice_mill.cl_rice_mill_group_accountant').all_user_ids.filtered(
+            lambda u: not u.share and u.company_id == self.company_id)
+        managers = self.env.ref('cl_rice_mill.cl_rice_mill_group_manager').all_user_ids
+        user = (accountants - managers)[:1] or accountants[:1] or self.env.user
+        self.farmer_season_id.sudo().activity_schedule(
+            'mail.mail_activity_data_todo',
+            date_deadline=date,
+            user_id=user.id,
+            summary=self.env._("Collect %s promised after a release override", self.currency_id.format(balance)),
+            note=self.env._(
+                "Stock was released on %(release)s under a manager override while %(farmer)s owed %(balance)s. "
+                "He promised to pay by %(date)s.",
+                release=self.name, farmer=self.partner_id.name, balance=self.currency_id.format(balance), date=date),
+        )
 
     def _cl_check_manager(self):
         if not self.env.user.has_group('cl_rice_mill.cl_rice_mill_group_manager'):

@@ -296,7 +296,7 @@ class ClRiceServiceJob(models.Model):
             raise UserError(self.env._("Only done or cancelled jobs can be reset to draft."))
         self.state = 'draft'
 
-    def _cl_reverse(self, reason, amount=None):
+    def _cl_reverse(self, reason, amount=None, date=None):
         self.ensure_one()
         self._cl_check_manager()
         if self.state != 'charged':

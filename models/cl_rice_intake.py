@@ -162,7 +162,7 @@ class ClRiceIntake(models.Model):
             'context': {'default_res_model': self._name, 'default_res_id': self.id, 'default_action': 'reverse'},
         }
 
-    def _cl_reverse(self, reason, amount=None):
+    def _cl_reverse(self, reason, amount=None, date=None):
         """Send the received paddy back out (a weighing mistake), if it is still in the store."""
         self.ensure_one()
         self._cl_check_manager()

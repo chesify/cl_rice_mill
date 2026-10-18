@@ -68,6 +68,7 @@
                             <field name="balance_at_clearance"/>
                             <field name="funds_applied" invisible="not funds_applied"/>
                             <field name="override_reason" invisible="not override_reason"/>
+                            <field name="override_promised_date" invisible="not override_promised_date"/>
                         </group>
                         <group>
                             <field name="cleared_uid"/>

@@ -36,7 +36,7 @@
                     <button name="action_receive_payment" type="object" string="Receive Payment"
                             invisible="is_locked or state == 'draft'" groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
                     <button name="action_release_stock" type="object" string="Release Stock"
-                            invisible="state not in ('harvested', 'in_storage', 'released')"
+                            invisible="state not in ('harvested', 'in_storage', 'released', 'settled')"
                             groups="cl_rice_mill.cl_rice_mill_group_warehouse,cl_rice_mill.cl_rice_mill_group_accountant"/>
                     <button name="action_open_settle" type="object" string="Pay Farmer"
                             invisible="state not in ('released', 'in_storage', 'harvested', 'active')"
@@ -80,6 +80,11 @@
                     <widget name="web_ribbon" title="Locked" bg_color="text-bg-secondary" invisible="not is_locked"/>
                     <div class="alert alert-danger mb-2" role="alert" invisible="not over_limit">
                         The farmer's exposure is above the credit limit.
+                    </div>
+                    <div class="alert alert-danger mb-2" role="alert" invisible="not override_outstanding">
+                        Stock was released on a manager override and the farmer has not paid yet
+                        (promised by <field name="override_promised_date" class="d-inline"/>).
+                        <field name="override_outstanding" invisible="1"/>
                     </div>
                     <div class="alert alert-warning mb-2" role="alert" invisible="not low_cover">
                         The stock held covers too little of what the farmer owes.

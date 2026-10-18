@@ -95,6 +95,15 @@ class ClRiceFarmerSeason(models.Model):
         string="Collateral Cover (%)", compute='_compute_stock_held', digits=(16, 1),
         help="Collateral value against the amount owed.")
     low_cover = fields.Boolean(string="Low Collateral Cover", compute='_compute_stock_held')
+    stock_held_kg = fields.Float(
+        string="Stock Held (kg)", compute='_compute_stock_held', digits='Product Unit',
+        help="Everything the farmer still owns in the warehouse (paddy, rice, broken rice).")
+    override_outstanding = fields.Boolean(
+        string="Override Outstanding", compute='_compute_override_outstanding',
+        search='_search_override_outstanding',
+        help="Stock was released on a manager override and the farmer has not paid yet.")
+    override_promised_date = fields.Date(
+        string="Promised Payment", compute='_compute_override_outstanding')
 
     # Live figures (what was charged, by kind)
     loan_total = fields.Monetary(string="Loans Given", compute='_compute_charges')
@@ -190,7 +199,9 @@ class ClRiceFarmerSeason(models.Model):
             key = (lot.cl_farmer_season_id.id, lot.product_id.cl_rice_product)
             bags[key] = bags.get(key, 0.0) + lot.cl_bag_qty
         owed, _due = self._cl_open_balances()
+        held = self._cl_stock_held_by_season()
         for fs in self:
+            fs.stock_held_kg = held.get(fs.id, 0.0)
             fs.paddy_kg = kg.get((fs.id, 'paddy'), 0.0)
             fs.rice_kg = kg.get((fs.id, 'rice'), 0.0)
             fs.paddy_bags = bags.get((fs.id, 'paddy'), 0.0) if fs.paddy_kg else 0.0
@@ -200,6 +211,101 @@ class ClRiceFarmerSeason(models.Model):
             balance = owed.get(fs.id, 0.0)
             fs.collateral_cover = fs.collateral_value / balance * 100.0 if balance > 0 else 0.0
             fs.low_cover = balance > 0 and fs.collateral_cover < fs.company_id.cl_rice_min_cover_percent
+
+    def _cl_stock_held_by_season(self):
+        """Kg of every rice mill product the farmer still owns in the warehouse, per farmer season id."""
+        quants = self.env['stock.quant'].sudo().search([
+            ('lot_id.cl_farmer_season_id', 'in', self.ids),
+            ('location_id.usage', '=', 'internal'),
+            ('quantity', '>', 0),
+        ])
+        held = {}
+        for quant in quants:
+            fs = quant.lot_id.cl_farmer_season_id
+            if quant.owner_id == fs.partner_id:
+                held[fs.id] = held.get(fs.id, 0.0) + quant.quantity
+        return held
+
+    def _cl_stock_held_kg(self):
+        self.ensure_one()
+        return self._cl_stock_held_by_season().get(self.id, 0.0)
+
+    def _compute_override_outstanding(self):
+        releases = self.env['cl.rice.stock.release'].sudo().search([
+            ('farmer_season_id', 'in', self.ids),
+            ('clearance_basis', '=', 'override'),
+            ('state', 'in', ('cleared', 'released')),
+        ], order='override_promised_date')
+        owed, _due = self._cl_open_balances()
+        for fs in self:
+            fs_releases = releases.filtered(lambda r: r.farmer_season_id == fs)
+            outstanding = bool(fs_releases) and fs.currency_id.compare_amounts(owed.get(fs.id, 0.0), 0) > 0
+            fs.override_outstanding = outstanding
+            fs.override_promised_date = outstanding and fs_releases[:1].override_promised_date
+
+    def _search_override_outstanding(self, operator, value):
+        if operator not in ('=', '!=') or not isinstance(value, bool):
+            return NotImplemented
+        releases = self.env['cl.rice.stock.release'].sudo().search([
+            ('clearance_basis', '=', 'override'), ('state', 'in', ('cleared', 'released'))])
+        candidates = releases.farmer_season_id
+        owed, _due = candidates._cl_open_balances()
+        ids = [fs.id for fs in candidates if fs.currency_id.compare_amounts(owed.get(fs.id, 0.0), 0) > 0]
+        positive = (operator == '=') == value
+        return [('id', 'in' if positive else 'not in', ids)]
+
+    def _cl_statement_breakdown(self):
+        """Everything charged and received this season, in plain words, for statements.
+
+        :return: list of dicts with ``date``, ``kind`` ('owed' or 'earned'), ``category``, ``name``, ``amount``
+        """
+        self.ensure_one()
+        lines = []
+
+        def add(date, kind, category, name, amount):
+            if amount and not self.currency_id.is_zero(amount):
+                lines.append({'date': date, 'kind': kind, 'category': category, 'name': name, 'amount': amount})
+
+        for line in self.env['cl.rice.opening.balance.line'].search(
+                [('farmer_season_id', '=', self.id), ('batch_id.state', '=', 'posted')]):
+            add(line.batch_id.date, 'owed', 'opening',
+                self.env._("Opening balance brought forward (%s)", line.batch_id.name), line.debt_total)
+        loan_types = dict(self.env['cl.rice.loan']._fields['loan_type']._description_selection(self.env))
+        for loan in self.loan_ids.filtered(lambda l: l.state in ('disbursed', 'settled')):
+            if loan.loan_type == 'carry_forward':
+                name = self.env._("Balance carried from the previous season (%s)", loan.name)
+            else:
+                name = self.env._("Loan %(ref)s - %(type)s", ref=loan.name, type=loan_types[loan.loan_type].lower())
+            add(loan.disbursement_date or loan.date, 'owed', 'loan', name, loan.amount)
+        service_types = dict(self.env['cl.rice.service.job']._fields['service_type']._description_selection(self.env))
+        for job in self.service_job_ids.filtered(lambda j: j.state == 'charged'):
+            add(job.date, 'owed', 'service', self.env._(
+                "%(service)s, %(qty)s %(uom)s (%(ref)s)",
+                service=service_types[job.service_type], qty=job.quantity, uom=job.uom or '', ref=job.name), job.amount)
+            add(job.date, 'owed', 'operator', self.env._(
+                "Operators paid for you (%s)", job.name), job.operator_paid_amount)
+        for job in self.milling_job_ids.filtered(lambda j: j.state == 'done'):
+            add(job.date_end and job.date_end.date(), 'owed', 'milling', self.env._(
+                "Milling %(kg)s kg of paddy (%(ref)s)", kg=job.input_kg, ref=job.name), job.fee_amount)
+        for fee in self.storage_fee_ids:
+            add(fee.date, 'owed', 'storage', self.env._(
+                "Storage %(period)s, %(qty)s %(basis)s", period=fee.period, qty=fee.quantity, basis=fee.basis), fee.amount)
+        for payment in self.payment_ids.filtered(lambda p: p.state == 'posted'):
+            if payment.payment_type == 'repayment':
+                name = self.env._("Payment received from you (%s)", payment.name)
+                category = 'repayment'
+            else:
+                name = self.env._("Paid by %(buyer)s for your crop (%(ref)s)", buyer=payment.payer_id.name, ref=payment.name)
+                category = 'buyer_payment'
+            add(payment.date, 'earned', category, name, payment.amount)
+        for settlement in self.settlement_ids.filtered(
+                lambda s: s.settlement_type == 'interim' and s.state == 'paid' and s.payment_id):
+            add(settlement.payment_id.date, 'owed', 'payout', self.env._(
+                "Paid out to you (%s)", settlement.name), settlement.payment_id.amount)
+        lines.sort(key=lambda line: (line['date'] or fields.Date.today(), line['kind']))
+        for sequence, line in enumerate(lines):
+            line['sequence'] = sequence
+        return lines
 
     @api.depends('loan_ids.state', 'loan_ids.amount',
                  'service_job_ids.state', 'service_job_ids.amount', 'service_job_ids.operator_paid_amount',
@@ -500,7 +606,7 @@ class ClRiceFarmerSeason(models.Model):
         return self._cl_open_form('cl.rice.farmer.payment', self.env._("Receive Payment"))
 
     def action_release_stock(self):
-        self._cl_check_open()
+        self._cl_check_open_for_release()
         return self._cl_open_form('cl.rice.facilitated.sale', self.env._("Release Stock"))
 
     def action_send_balance(self):
@@ -577,6 +683,14 @@ class ClRiceFarmerSeason(models.Model):
                 "Farmer season %s is settled: no new charges can be added. Use a reversal to correct it.",
                 locked[0].name))
 
+    def _cl_check_open_for_release(self):
+        """Stock may still leave a settled season, as long as nothing is owed (no new charge is made)."""
+        for fs in self.filtered('is_locked'):
+            if fs.currency_id.compare_amounts(fs._cl_balance_owed(), 0) > 0:
+                raise UserError(self.env._(
+                    "Farmer season %s is settled with a balance still owed: reverse the settlement to release stock.",
+                    fs.name))
+
     def _cl_advance_state(self, from_states, to_state):
         """Move farmer seasons forward when an operation happens (intake, release, settlement).
 
@@ -631,7 +745,7 @@ class ClRiceFarmerSeason(models.Model):
         """Actions the reason wizard may run on this model: name -> callable(reason, amount)."""
         return {'credit_override': self._cl_apply_credit_override}
 
-    def _cl_apply_credit_override(self, reason, amount):
+    def _cl_apply_credit_override(self, reason, amount, date=None):
         self.ensure_one()
         self._cl_check_manager()
         self._cl_check_open()

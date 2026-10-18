@@ -19,6 +19,8 @@ class ClRiceReason(models.TransientModel):
     amount = fields.Monetary(currency_field='currency_id')
     currency_id = fields.Many2one('res.currency', default=lambda self: self.env.company.currency_id)
     show_amount = fields.Boolean(compute='_compute_show_amount')
+    date = fields.Date(string="Promised Payment Date", help="When the farmer promised to pay what he still owes.")
+    show_date = fields.Boolean(compute='_compute_show_amount')
 
     @api.model
     def _cl_reason_models(self):
@@ -31,8 +33,14 @@ class ClRiceReason(models.TransientModel):
     @api.depends('action')
     def _compute_show_amount(self):
         amount_actions = self._cl_amount_actions()
+        date_actions = self._cl_date_actions()
         for wizard in self:
             wizard.show_amount = wizard.action in amount_actions
+            wizard.show_date = (wizard.res_model, wizard.action) in date_actions
+
+    @api.model
+    def _cl_date_actions(self):
+        return {('cl.rice.stock.release', 'override')}
 
     def action_confirm(self):
         self.ensure_one()
@@ -45,5 +53,7 @@ class ClRiceReason(models.TransientModel):
         handler = record._cl_reason_actions().get(self.action)
         if not handler:
             raise UserError(self.env._("This action is not available."))
-        handler(self.reason, self.amount)
+        if (self.res_model, self.action) in self._cl_date_actions() and not self.date:
+            raise UserError(self.env._("Enter the date the farmer promised to pay."))
+        handler(self.reason, self.amount, self.date)
         return {'type': 'ir.actions.act_window_close'}
