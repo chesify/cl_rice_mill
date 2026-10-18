@@ -25,6 +25,7 @@
         <field name="arch" type="xml">
             <form>
                 <header>
+                    <button name="%(cl_rice_mill.action_report_settlement_statement)d" type="action" string="Print Statement"/>
                     <button name="action_compute" type="object" string="Recompute" invisible="state != 'draft'"
                             groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
                     <button name="action_confirm" type="object" string="Confirm Settlement" class="btn-primary"

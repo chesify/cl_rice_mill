@@ -31,6 +31,8 @@
         <field name="arch" type="xml">
             <form>
                 <header>
+                    <button name="%(cl_rice_mill.action_report_milling_certificate)d" type="action" string="Print Certificate"
+                            invisible="state != 'done'"/>
                     <button name="action_start" type="object" string="Start Milling" invisible="state != 'draft'"/>
                     <button name="action_done" type="object" string="Finish Milling" class="btn-primary"
                             invisible="state not in ('draft', 'in_progress')"

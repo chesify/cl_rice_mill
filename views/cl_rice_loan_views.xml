@@ -29,6 +29,8 @@
         <field name="arch" type="xml">
             <form>
                 <header>
+                    <button name="%(cl_rice_mill.action_report_loan_agreement)d" type="action" string="Print Agreement"
+                            invisible="state not in ('approved', 'disbursed', 'settled')"/>
                     <button name="action_submit" type="object" string="Submit for Approval" class="btn-primary"
                             invisible="state != 'draft'"/>
                     <button name="action_approve" type="object" string="Approve" class="btn-primary"

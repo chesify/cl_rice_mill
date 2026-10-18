@@ -1,0 +1,350 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ================================================================== actions -->
+    <record id="action_report_farmer_statement" model="ir.actions.report">
+        <field name="name">Farmer Account Statement</field>
+        <field name="model">cl.rice.farmer.season</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">cl_rice_mill.report_farmer_statement</field>
+        <field name="print_report_name">'Statement - %s - %s' % (object.partner_id.name, object.season_id.name)</field>
+        <field name="binding_model_id" ref="model_cl_rice_farmer_season"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <record id="action_report_settlement_statement" model="ir.actions.report">
+        <field name="name">Settlement Statement</field>
+        <field name="model">cl.rice.settlement</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">cl_rice_mill.report_settlement_statement</field>
+        <field name="print_report_name">'Settlement - %s' % object.name</field>
+        <field name="binding_model_id" ref="model_cl_rice_settlement"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <record id="action_report_warehouse_receipt" model="ir.actions.report">
+        <field name="name">Warehouse Receipt</field>
+        <field name="model">cl.rice.intake</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">cl_rice_mill.report_warehouse_receipt</field>
+        <field name="print_report_name">'Warehouse Receipt - %s' % object.name</field>
+        <field name="binding_model_id" ref="model_cl_rice_intake"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <record id="action_report_loan_agreement" model="ir.actions.report">
+        <field name="name">Loan Agreement</field>
+        <field name="model">cl.rice.loan</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">cl_rice_mill.report_loan_agreement</field>
+        <field name="print_report_name">'Loan Agreement - %s' % object.name</field>
+        <field name="binding_model_id" ref="model_cl_rice_loan"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <record id="action_report_milling_certificate" model="ir.actions.report">
+        <field name="name">Milling Certificate</field>
+        <field name="model">cl.rice.milling.job</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">cl_rice_mill.report_milling_certificate</field>
+        <field name="print_report_name">'Milling Certificate - %s' % object.name</field>
+        <field name="binding_model_id" ref="model_cl_rice_milling_job"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- ================================================================== shared parts -->
+    <template id="report_farmer_block">
+        <table class="table table-sm table-borderless mb-3">
+            <tr>
+                <td class="w-50">
+                    <strong>Farmer:</strong> <span t-out="partner.name"/>
+                    <t t-if="partner.cl_farmer_code"> (<span t-out="partner.cl_farmer_code"/>)</t><br/>
+                    <t t-if="partner.cl_village"><strong>Village:</strong> <span t-out="partner.cl_village"/><br/></t>
+                    <t t-if="partner.phone"><strong>Phone:</strong> <span t-out="partner.phone"/></t>
+                </td>
+                <td class="w-50 text-end">
+                    <t t-if="season"><strong>Season:</strong> <span t-out="season.name"/><br/></t>
+                    <t t-if="officer"><strong>Field Officer:</strong> <span t-out="officer.name"/><br/></t>
+                    <strong>Printed:</strong> <span t-out="context_timestamp(datetime.datetime.now()).strftime('%d/%m/%Y %H:%M')"/>
+                </td>
+            </tr>
+        </table>
+    </template>
+
+    <template id="report_signatures">
+        <div class="row mt-5" style="page-break-inside: avoid;">
+            <t t-foreach="signers" t-as="signer">
+                <div t-attf-class="col-#{12 // len(signers)} text-center">
+                    <div style="height: 50px;"/>
+                    <div class="border-top pt-1"><span t-out="signer"/></div>
+                    <div class="small text-muted">Name, signature and date</div>
+                </div>
+            </t>
+        </div>
+    </template>
+
+    <!-- ================================================================== statement -->
+    <template id="report_farmer_statement">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="fs">
+                <t t-set="o" t-value="fs"/>
+                <t t-set="statement" t-value="statements[fs.id]"/>
+                <t t-call="web.external_layout">
+                    <div class="page o_cl_rice_statement">
+                        <h2>Farmer Account Statement</h2>
+                        <p class="text-muted">
+                            <t t-if="statement['date_from'] or statement['date_to']">
+                                From <span t-out="statement['date_from'] and statement['date_from'].strftime('%d/%m/%Y') or 'the start of the season'"/>
+                                to <span t-out="statement['date_to'] and statement['date_to'].strftime('%d/%m/%Y') or 'today'"/>
+                            </t>
+                            <t t-else="">Whole season</t>
+                        </p>
+                        <t t-call="cl_rice_mill.report_farmer_block" partner="fs.partner_id" season="fs.season_id" officer="fs.field_officer_id"/>
+                        <t t-call="cl_rice_mill.report_statement_table" currency="fs.currency_id" statement="statement"/>
+                        <div class="row mt-3">
+                            <div class="col-6">
+                                <table class="table table-sm table-bordered">
+                                    <tr><th>Stock held (paddy and rice)</th>
+                                        <td class="text-end"><span t-out="'{:,.0f}'.format(fs.stock_held_kg)"/> kg</td></tr>
+                                    <tr><th>Credit limit</th>
+                                        <td class="text-end"><span t-field="fs.credit_limit"/></td></tr>
+                                </table>
+                            </div>
+                            <div class="col-6">
+                                <p class="small">
+                                    A positive balance is what you owe <t t-out="fs.company_id.name"/>. A negative balance (in brackets) is money
+                                    held for you. Please check this statement and report any mistake to your field officer.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_statement_table">
+        <table class="table table-sm o_main_table mt-2">
+            <thead>
+                <tr>
+                    <th class="text-start">Date</th>
+                    <th class="text-start">Description</th>
+                    <th class="text-end">Charges</th>
+                    <th class="text-end">Payments / Credits</th>
+                    <th class="text-end">Balance</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr t-if="statement['opening']">
+                    <td/>
+                    <td><em>Balance brought forward</em></td>
+                    <td/><td/>
+                    <td class="text-end"><span t-out="statement['opening']" t-options="{'widget': 'monetary', 'display_currency': currency}"/></td>
+                </tr>
+                <tr t-foreach="statement['lines']" t-as="line">
+                    <td><span t-out="line['date'] and line['date'].strftime('%d/%m/%Y')"/></td>
+                    <td><span t-out="line['name']"/></td>
+                    <td class="text-end"><t t-if="line['kind'] == 'owed'"><span t-out="line['amount']" t-options="{'widget': 'monetary', 'display_currency': currency}"/></t></td>
+                    <td class="text-end"><t t-if="line['kind'] == 'earned'"><span t-out="line['amount']" t-options="{'widget': 'monetary', 'display_currency': currency}"/></t></td>
+                    <td class="text-end"><span t-out="line['balance']" t-options="{'widget': 'monetary', 'display_currency': currency}"/></td>
+                </tr>
+                <tr t-if="not statement['lines']">
+                    <td colspan="5" class="text-center text-muted">Nothing in this period.</td>
+                </tr>
+            </tbody>
+            <tfoot>
+                <tr class="fw-bold border-top">
+                    <td/>
+                    <td>Totals</td>
+                    <td class="text-end"><span t-out="statement['charges']" t-options="{'widget': 'monetary', 'display_currency': currency}"/></td>
+                    <td class="text-end"><span t-out="statement['receipts']" t-options="{'widget': 'monetary', 'display_currency': currency}"/></td>
+                    <td class="text-end">
+                        <span t-out="statement['closing']" t-options="{'widget': 'monetary', 'display_currency': currency}"/>
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+        <p class="fw-bold fs-5">
+            <t t-if="statement['closing'] &gt; 0">You owe: <span t-out="statement['closing']" t-options="{'widget': 'monetary', 'display_currency': currency}"/></t>
+            <t t-elif="statement['closing'] &lt; 0">Held for you: <span t-out="-statement['closing']" t-options="{'widget': 'monetary', 'display_currency': currency}"/></t>
+            <t t-else="">Your account is clear.</t>
+        </p>
+    </template>
+
+    <!-- ================================================================== settlement -->
+    <template id="report_settlement_statement">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="settlement">
+                <t t-set="o" t-value="settlement"/>
+                <t t-set="currency" t-value="settlement.currency_id"/>
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2>
+                            <t t-if="settlement.settlement_type == 'interim'">Interim Payout Statement</t>
+                            <t t-else="">Settlement Statement</t>
+                            <span t-field="settlement.name"/>
+                        </h2>
+                        <t t-call="cl_rice_mill.report_farmer_block" partner="settlement.partner_id" season="settlement.season_id" officer="settlement.field_officer_id"/>
+                        <h5>Everything of the season</h5>
+                        <table class="table table-sm o_main_table">
+                            <thead>
+                                <tr>
+                                    <th class="text-start">Date</th>
+                                    <th class="text-start">Description</th>
+                                    <th class="text-end">Charges</th>
+                                    <th class="text-end">Payments / Credits</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="settlement.statement_line_ids.sorted(lambda l: (l.date or settlement.date, l.sequence))" t-as="line">
+                                    <td><span t-field="line.date"/></td>
+                                    <td><span t-field="line.name"/></td>
+                                    <td class="text-end"><t t-if="line.kind == 'owed'"><span t-field="line.amount"/></t></td>
+                                    <td class="text-end"><t t-if="line.kind == 'earned'"><span t-field="line.amount"/></t></td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr class="fw-bold border-top">
+                                    <td/>
+                                    <td>Season totals</td>
+                                    <td class="text-end"><span t-field="settlement.statement_charges"/></td>
+                                    <td class="text-end"><span t-field="settlement.statement_receipts"/></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                        <h5 class="mt-4">Settled now</h5>
+                        <table class="table table-sm table-bordered w-75">
+                            <tr><th>Still owed by you (open items)</th><td class="text-end"><span t-field="settlement.owed_total"/></td></tr>
+                            <tr><th>Money held for you (open items)</th><td class="text-end"><span t-field="settlement.earned_total"/></td></tr>
+                            <tr class="fw-bold">
+                                <th>
+                                    <t t-if="settlement.net_amount &gt;= 0">Paid out to you</t>
+                                    <t t-else="">Still owed by you</t>
+                                </th>
+                                <td class="text-end"><span t-out="abs(settlement.net_amount)" t-options="{'widget': 'monetary', 'display_currency': currency}"/></td>
+                            </tr>
+                            <tr t-if="settlement.payment_id"><th>Paid by</th>
+                                <td class="text-end"><span t-field="settlement.payment_id.journal_id.name"/> on <span t-field="settlement.payment_id.date"/></td></tr>
+                            <tr t-if="settlement.carry_loan_id"><th>Carried to next season</th>
+                                <td class="text-end"><span t-field="settlement.carry_loan_id.name"/></td></tr>
+                        </table>
+                        <t t-call="cl_rice_mill.report_signatures" signers="['Farmer', o.company_id.name]"/>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <!-- ================================================================== warehouse receipt -->
+    <template id="report_warehouse_receipt">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="intake">
+                <t t-set="o" t-value="intake"/>
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2>Warehouse Receipt <span t-field="intake.name"/></h2>
+                        <p class="text-muted"><span t-out="intake.company_id.name"/> has received and keeps in store the paddy below, owned by the depositor.</p>
+                        <t t-call="cl_rice_mill.report_farmer_block" partner="intake.partner_id" season="intake.season_id" officer="intake.field_officer_id"/>
+                        <table class="table table-sm table-bordered">
+                            <tr><th class="w-50">Date received</th><td><span t-field="intake.date"/></td></tr>
+                            <tr><th>Product</th><td><span t-field="intake.product_id.name"/></td></tr>
+                            <tr><th>Lot</th><td><span t-field="intake.lot_id.name"/></td></tr>
+                            <tr><th>Store</th><td><span t-field="intake.location_id.display_name"/></td></tr>
+                            <tr><th>Bags</th><td><span t-field="intake.bags"/></td></tr>
+                            <tr><th>Gross weight</th><td><span t-field="intake.gross_weight"/> kg</td></tr>
+                            <tr><th>Tare (bags)</th><td><span t-field="intake.tare_weight"/> kg</td></tr>
+                            <tr class="fw-bold"><th>Net weight</th><td><span t-field="intake.net_weight"/> kg</td></tr>
+                            <tr><th>Moisture</th><td><span t-field="intake.moisture"/> %</td></tr>
+                            <tr><th>Grade</th><td><span t-field="intake.grade"/></td></tr>
+                            <tr><th>Received by</th><td><span t-field="intake.received_by_id.name"/></td></tr>
+                        </table>
+                        <p class="small">
+                            The stock stays the property of the depositor. It leaves the warehouse only through a
+                            stock release cleared by the mill, against the gate pass. Storage is charged as agreed.
+                        </p>
+                        <t t-call="cl_rice_mill.report_signatures" signers="['Depositor', 'Warehouse Officer']"/>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <!-- ================================================================== loan agreement -->
+    <template id="report_loan_agreement">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="loan">
+                <t t-set="o" t-value="loan"/>
+                <t t-set="farmer" t-value="loan.partner_id"/>
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2>Loan Agreement <span t-field="loan.name"/></h2>
+                        <t t-call="cl_rice_mill.report_farmer_block" partner="farmer" season="loan.season_id" officer="loan.field_officer_id"/>
+                        <table class="table table-sm table-bordered">
+                            <tr><th class="w-50">National ID (NIDA)</th><td><span t-out="farmer.cl_nida_number or '-'"/></td></tr>
+                            <tr><th>Loan type</th><td><span t-field="loan.loan_type"/></td></tr>
+                            <tr t-if="loan.purpose"><th>Purpose</th><td><span t-field="loan.purpose"/></td></tr>
+                            <tr class="fw-bold"><th>Amount</th><td><span t-field="loan.amount"/></td></tr>
+                            <tr><th>Paid by</th><td><span t-field="loan.disbursement_method"/> - <span t-field="loan.journal_id.name"/></td></tr>
+                            <tr><th>Date</th><td><span t-out="(loan.disbursement_date or loan.date).strftime('%d/%m/%Y')"/></td></tr>
+                        </table>
+                        <h5>Terms</h5>
+                        <ol class="small">
+                            <li>The loan is free of interest. It is repaid from the sale of the farmer's crop this season,
+                                or in cash before the settlement.</li>
+                            <li>The farmer stores the paddy of this season in the mill's warehouse. The stock is the
+                                farmer's property and is the security for this loan and the services received.</li>
+                            <li>No stock leaves the warehouse while a balance is owed, unless the mill agrees in writing.</li>
+                            <li>Services (tractor, harvester, milling, storage) are added to the farmer's account at the
+                                agreed rates and appear on the farmer's statement.</li>
+                            <li>At the end of the season the mill settles the account: what is owed is deducted from the
+                                money held for the farmer and the rest is paid out.</li>
+                        </ol>
+                        <t t-call="cl_rice_mill.report_signatures" signers="['Farmer', 'Witness', 'For ' + o.company_id.name]"/>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <!-- ================================================================== milling certificate -->
+    <template id="report_milling_certificate">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="job">
+                <t t-set="o" t-value="job"/>
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2>Milling Certificate <span t-field="job.name"/></h2>
+                        <t t-call="cl_rice_mill.report_farmer_block" partner="job.partner_id" season="job.season_id" officer="job.field_officer_id"/>
+                        <table class="table table-sm table-bordered">
+                            <thead>
+                                <tr><th>Item</th><th class="text-end">Kg</th><th class="text-end">Bags</th><th class="text-end">% of paddy</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr class="fw-bold"><td>Paddy milled (lot <span t-field="job.input_lot_id.name"/>)</td>
+                                    <td class="text-end"><span t-field="job.input_kg"/></td>
+                                    <td class="text-end"><span t-field="job.input_bags"/></td>
+                                    <td class="text-end">100.00</td></tr>
+                                <t t-foreach="[('Milled rice', job.rice_kg, job.rice_bags), ('Broken rice', job.broken_kg, job.broken_bags), ('Bran', job.bran_kg, job.bran_bags), ('Husk', job.husk_kg, job.husk_bags), ('Loss', job.loss_kg, 0)]" t-as="row">
+                                    <tr>
+                                        <td><span t-out="row[0]"/></td>
+                                        <td class="text-end"><span t-out="'{:,.2f}'.format(row[1])"/></td>
+                                        <td class="text-end"><span t-out="row[2] and '{:,.1f}'.format(row[2]) or ''"/></td>
+                                        <td class="text-end"><span t-out="'{:.2f}'.format(job.input_kg and row[1] / job.input_kg * 100)"/></td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                        <table class="table table-sm table-bordered w-75">
+                            <tr><th>Recovery (milled rice)</th><td class="text-end"><span t-field="job.recovery_pct"/> %</td></tr>
+                            <tr><th>Rice and broken</th><td class="text-end"><span t-field="job.total_recovery_pct"/> %</td></tr>
+                            <tr><th>Milled on</th><td class="text-end"><span t-field="job.date_start"/> - <span t-field="job.date_end"/></td></tr>
+                            <tr t-if="job.vehicle_id"><th>Mill</th><td class="text-end"><span t-field="job.vehicle_id.display_name"/></td></tr>
+                            <tr t-if="job.fee_amount"><th>Milling fee</th><td class="text-end"><span t-field="job.fee_amount"/></td></tr>
+                            <tr t-if="job.byproducts_pay_fee"><th>Milling fee</th><td class="text-end">Paid with the bran and husk kept by the mill</td></tr>
+                        </table>
+                        <t t-call="cl_rice_mill.report_signatures" signers="['Owner', 'Mill Operator']"/>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

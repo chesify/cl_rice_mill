@@ -27,6 +27,8 @@
         <field name="arch" type="xml">
             <form>
                 <header>
+                    <button name="%(cl_rice_mill.action_report_warehouse_receipt)d" type="action" string="Print Warehouse Receipt"
+                            invisible="state != 'done'"/>
                     <button name="action_confirm" type="object" string="Receive into Store" class="btn-primary"
                             invisible="state != 'draft'"/>
                     <button name="action_cancel" type="object" string="Cancel" invisible="state != 'draft'"/>

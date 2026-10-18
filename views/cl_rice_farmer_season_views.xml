@@ -29,6 +29,8 @@
         <field name="arch" type="xml">
             <form>
                 <header>
+                    <button name="%(cl_rice_mill.cl_rice_statement_print_action)d" type="action" string="Print Statement"
+                            invisible="state == 'draft'" context="{'default_farmer_season_id': id}"/>
                     <button name="action_give_loan" type="object" string="Give Loan" class="btn-primary"
                             invisible="is_locked or state == 'draft'"/>
                     <button name="action_record_service" type="object" string="Record Service"

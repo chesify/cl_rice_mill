@@ -88,3 +88,15 @@ access_cl_rice_walkin_collection_warehouse,cl.rice.walkin.collection.warehouse,c
 access_cl_rice_walkin_collection_accountant,cl.rice.walkin.collection.accountant,cl.rice.walkin.collection,cl_rice_mill_group_accountant,cru,
 access_cl_rice_walkin_collection_manager,cl.rice.walkin.collection.manager,cl.rice.walkin.collection,cl_rice_mill_group_manager,crud,
 cl_rice_walkin_collection_rule_company,cl.rice.walkin.collection multi-company,cl.rice.walkin.collection,,crud,"[('company_id', 'in', company_ids)]"
+access_cl_rice_farmer_season_portal,cl.rice.farmer.season.portal,cl.rice.farmer.season,base.group_portal,r,"[('partner_id', 'child_of', [user.commercial_partner_id.id])]"
+access_cl_rice_loan_portal,cl.rice.loan.portal,cl.rice.loan,base.group_portal,r,"[('partner_id', 'child_of', [user.commercial_partner_id.id])]"
+access_cl_rice_service_job_portal,cl.rice.service.job.portal,cl.rice.service.job,base.group_portal,r,"[('partner_id', 'child_of', [user.commercial_partner_id.id])]"
+access_cl_rice_intake_portal,cl.rice.intake.portal,cl.rice.intake,base.group_portal,r,"[('partner_id', 'child_of', [user.commercial_partner_id.id])]"
+access_cl_rice_milling_job_portal,cl.rice.milling.job.portal,cl.rice.milling.job,base.group_portal,r,"[('partner_id', 'child_of', [user.commercial_partner_id.id])]"
+access_cl_rice_storage_fee_portal,cl.rice.storage.fee.portal,cl.rice.storage.fee,base.group_portal,r,"[('partner_id', 'child_of', [user.commercial_partner_id.id])]"
+access_cl_rice_farmer_payment_portal,cl.rice.farmer.payment.portal,cl.rice.farmer.payment,base.group_portal,r,"[('partner_id', 'child_of', [user.commercial_partner_id.id])]"
+access_cl_rice_settlement_portal,cl.rice.settlement.portal,cl.rice.settlement,base.group_portal,r,"[('partner_id', 'child_of', [user.commercial_partner_id.id])]"
+access_cl_rice_stock_release_portal,cl.rice.stock.release.portal,cl.rice.stock.release,base.group_portal,r,"[('partner_id', 'child_of', [user.commercial_partner_id.id])]"
+access_cl_rice_settlement_line_portal,cl.rice.settlement.line.portal,cl.rice.settlement.line,base.group_portal,r,"[('settlement_id', 'access', 'read')]"
+access_cl_rice_season_portal,cl.rice.season.portal,cl.rice.season,base.group_portal,r,
+access_cl_rice_statement_print_user,cl.rice.statement.print.user,cl.rice.statement.print,cl_rice_mill_group_user,crud,

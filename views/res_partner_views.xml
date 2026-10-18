@@ -21,6 +21,13 @@
                         Another farmer has the same phone number:
                         <field name="cl_possible_duplicate_ids" widget="many2many_tags" readonly="1" class="d-inline"/>
                     </div>
+                    <div class="mb-2 d-flex gap-2" invisible="cl_farmer_state == 'pending'">
+                        <button name="%(cl_rice_mill.cl_rice_statement_print_action)d" type="action" string="Print Statement"
+                                class="btn-secondary" invisible="not cl_farmer_season_count"/>
+                        <button name="action_cl_grant_portal" type="object" string="Grant Portal Access" class="btn-secondary"
+                                groups="cl_rice_mill.cl_rice_mill_group_accountant"
+                                confirm="Create a portal login for this farmer and show the first password?"/>
+                    </div>
                     <div class="mb-2" invisible="cl_farmer_state != 'pending'">
                         <button name="action_cl_approve_farmer" type="object" string="Approve Farmer" class="btn-primary"
                                 groups="cl_rice_mill.cl_rice_mill_group_manager"/>

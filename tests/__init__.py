@@ -8,3 +8,4 @@ from . import test_field_sync
 from . import test_money_protection
 from . import test_costs_analytic
 from . import test_data_accuracy
+from . import test_documents_portal

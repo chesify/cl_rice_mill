@@ -1,8 +1,10 @@
 import re
+import secrets
 
 from odoo import api, fields, models
-from odoo.exceptions import AccessError, ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.fields import Domain
+from odoo.tools import email_normalize
 
 SENSITIVE_GROUPS = 'cl_rice_mill.cl_rice_mill_group_accountant'
 
@@ -166,6 +168,57 @@ class ResPartner(models.Model):
     def action_cl_block_farmer(self):
         self._cl_check_manager()
         self.cl_farmer_state = 'blocked'
+
+    def action_cl_grant_portal(self):
+        """One click: the farmer gets a portal login (email, or phone number when there is no email) to
+        follow the account. A first password is shown once, to give to the farmer."""
+        self.ensure_one()
+        if not self.env.user.has_group('cl_rice_mill.cl_rice_mill_group_accountant'):
+            raise AccessError(self.env._("Only the office can give portal access."))
+        if not self.is_farmer:
+            raise UserError(self.env._("Only farmers get access to the rice mill portal."))
+        user = self.with_context(active_test=False).user_ids[:1]
+        if user and not user._is_portal():
+            raise UserError(self.env._("%s is an internal user.", self.name))
+        if user and user.active:
+            raise UserError(self.env._("%s already has portal access (login: %s).", self.name, user.login))
+        login = self.email and email_normalize(self.email) or self._cl_normalize_phone_login()
+        if not login:
+            raise UserError(self.env._("Enter the farmer's phone number or email first: it is the portal login."))
+        password = secrets.token_urlsafe(6)
+        portal = self.env.ref('base.group_portal')
+        if user:
+            user.sudo().write({'active': True, 'password': password, 'group_ids': [(4, portal.id)]})
+        else:
+            company = self.company_id or self.env.company
+            user = self.env['res.users'].sudo().with_context(no_reset_password=True)._create_user_from_template({
+                'login': login,
+                'partner_id': self.id,
+                'company_id': company.id,
+                'company_ids': [(6, 0, company.ids)],
+                'password': password,
+            })
+        self.message_post(body=self.env._("Portal access given by %(user)s (login %(login)s).",
+                                          user=self.env.user.name, login=user.login))
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': self.env._("Portal access ready"),
+                'message': self.env._(
+                    "Give the farmer: website %(url)s/my/rice, login %(login)s, password %(password)s. "
+                    "The farmer can change the password after logging in.",
+                    url=self.get_base_url(), login=user.login, password=password),
+                'sticky': True,
+                'type': 'success',
+            },
+        }
+
+    def _cl_normalize_phone_login(self):
+        digits = re.sub(r'\D', '', self.phone or '')
+        if len(digits) >= 9:
+            return '255' + digits[-9:]
+        return False
 
     def _cl_check_manager(self):
         if not self.env.user.has_group('cl_rice_mill.cl_rice_mill_group_manager'):

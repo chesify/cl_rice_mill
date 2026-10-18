@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="portal_entry_rice_account" model="portal.entry">
+        <field name="name">My Rice Account</field>
+        <field name="description">Balance, stock in store, statement and documents of your seasons</field>
+        <field name="url">/my/rice</field>
+        <field name="image" type="bytes" file="cl_rice_mill/static/description/icon.png"/>
+        <field name="placeholder_count">rice_season_count</field>
+        <field name="category">client_category</field>
+        <field name="sequence" eval="5"/>
+    </record>
+</odoo>

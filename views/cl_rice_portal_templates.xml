@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="portal_breadcrumbs" inherit_id="portal.portal_breadcrumbs" name="Rice Mill Portal Breadcrumbs">
+        <xpath expr="//ol[hasclass('o_portal_submenu')]" position="inside">
+            <li t-if="page_name == 'rice'" class="breadcrumb-item active">My Rice Account</li>
+            <li t-if="page_name in ('rice_season', 'rice_statement')" class="breadcrumb-item">
+                <a href="/my/rice">My Rice Account</a>
+            </li>
+            <li t-if="page_name == 'rice_season'" class="breadcrumb-item active"><t t-out="fs.season_id.name"/></li>
+            <li t-if="page_name == 'rice_statement'" class="breadcrumb-item">
+                <a t-attf-href="/my/rice/#{fs.id}"><t t-out="fs.season_id.name"/></a>
+            </li>
+            <li t-if="page_name == 'rice_statement'" class="breadcrumb-item active">Statement</li>
+        </xpath>
+    </template>
+
+    <template id="portal_rice_amount">
+        <span t-out="amount" t-options="{'widget': 'monetary', 'display_currency': currency}"/>
+    </template>
+
+    <!-- ================================================================== /my/rice -->
+    <template id="portal_my_rice" name="My Rice Account">
+        <t t-call="portal.portal_layout">
+            <div class="o_cl_rice_portal">
+                <h3 class="mt-2 mb-3">My Rice Account</h3>
+                <div t-if="not farmer_seasons" class="alert alert-info" role="alert">
+                    You have no season with the rice mill yet. Your field officer registers you for the season.
+                </div>
+                <div class="row g-3">
+                    <div t-foreach="farmer_seasons" t-as="fs" class="col-12 col-md-6">
+                        <a t-attf-href="/my/rice/#{fs.id}" class="card h-100 text-reset text-decoration-none shadow-sm">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <h5 class="card-title mb-1" t-out="fs.season_id.name"/>
+                                    <span class="badge rounded-pill text-bg-light border" t-field="fs.state"/>
+                                </div>
+                                <p class="text-muted small mb-3"><t t-out="fs.name"/></p>
+                                <div class="row text-center g-2">
+                                    <div class="col-6">
+                                        <div class="small text-muted">You owe</div>
+                                        <div class="fs-5 fw-bold text-danger" t-if="fs.balance_owed">
+                                            <t t-call="cl_rice_mill.portal_rice_amount" amount="fs.balance_owed" currency="fs.currency_id"/>
+                                        </div>
+                                        <div class="fs-5 fw-bold text-success" t-else="">Nothing</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="small text-muted">Held for you</div>
+                                        <div class="fs-5 fw-bold">
+                                            <t t-call="cl_rice_mill.portal_rice_amount" amount="fs.funds_held" currency="fs.currency_id"/>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="small text-muted">In the store</div>
+                                        <div class="fs-6 fw-bold"><t t-out="'{:,.0f}'.format(stock_held.get(fs.id, 0.0))"/> kg</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="small text-muted">Settlement</div>
+                                        <div class="fs-6 fw-bold">
+                                            <t t-set="settled" t-value="fs.settlement_ids.filtered(lambda s: s.state in ('confirmed', 'paid') and s.settlement_type == 'final')"/>
+                                            <t t-if="settled">Settled on <span t-field="settled[:1].date"/></t>
+                                            <t t-else="">Not yet</t>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p t-if="last_events.get(fs.id)" class="small text-muted mt-3 mb-0">
+                                    Last: <span t-out="last_events[fs.id]['title']"/>
+                                    <t t-if="last_events[fs.id]['date']">(<span t-out="last_events[fs.id]['date'].strftime('%d/%m/%Y')"/>)</t>
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- ================================================================== season -->
+    <template id="portal_my_rice_season" name="My Rice Season">
+        <t t-call="portal.portal_layout">
+            <t t-set="currency" t-value="fs.currency_id"/>
+            <div class="o_cl_rice_portal">
+                <div t-if="request_sent" class="alert alert-success" role="alert">
+                    Your request was sent. Your field officer will contact you.
+                </div>
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2 mb-3">
+                    <h3 class="mb-0"><t t-out="fs.season_id.name"/> <small class="text-muted" t-out="fs.name"/></h3>
+                    <a t-attf-href="/my/rice/#{fs.id}/statement" class="btn btn-primary btn-sm">
+                        <i class="fa fa-list-alt me-1"/>Statement
+                    </a>
+                </div>
+                <div class="row g-2 text-center mb-3">
+                    <div class="col-6 col-md-3"><div class="border rounded p-2">
+                        <div class="small text-muted">You owe</div>
+                        <div class="fw-bold"><t t-call="cl_rice_mill.portal_rice_amount" amount="fs.balance_owed" currency="currency"/></div>
+                    </div></div>
+                    <div class="col-6 col-md-3"><div class="border rounded p-2">
+                        <div class="small text-muted">Held for you</div>
+                        <div class="fw-bold"><t t-call="cl_rice_mill.portal_rice_amount" amount="fs.funds_held" currency="currency"/></div>
+                    </div></div>
+                    <div class="col-6 col-md-3"><div class="border rounded p-2">
+                        <div class="small text-muted">Credit limit</div>
+                        <div class="fw-bold"><t t-call="cl_rice_mill.portal_rice_amount" amount="fs.credit_limit" currency="currency"/></div>
+                    </div></div>
+                    <div class="col-6 col-md-3"><div class="border rounded p-2">
+                        <div class="small text-muted">Status</div>
+                        <div class="fw-bold" t-field="fs.state"/>
+                    </div></div>
+                </div>
+
+                <h5>Your stock in the store</h5>
+                <div t-if="not stock" class="text-muted mb-3">No stock in the store.</div>
+                <div t-else="" class="table-responsive mb-3">
+                    <table class="table table-sm align-middle">
+                        <thead><tr><th>Product</th><th>Lot</th><th class="text-end">Kg</th><th class="text-end">Bags</th></tr></thead>
+                        <tbody>
+                            <tr t-foreach="stock" t-as="line">
+                                <td t-out="line['product']"/>
+                                <td class="small" t-out="line['lot']"/>
+                                <td class="text-end" t-out="'{:,.0f}'.format(line['kg'])"/>
+                                <td class="text-end" t-out="'{:,.1f}'.format(line['bags'])"/>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h5>What happened this season</h5>
+                <div t-if="not timeline" class="text-muted mb-3">Nothing yet.</div>
+                <ul t-else="" class="list-group mb-3">
+                    <li t-foreach="timeline" t-as="event" class="list-group-item d-flex gap-3 align-items-start">
+                        <i t-attf-class="fa #{event['icon']} fa-fw mt-1 text-primary"/>
+                        <div class="flex-grow-1">
+                            <div class="fw-semibold" t-out="event['title']"/>
+                            <div class="small text-muted">
+                                <t t-if="event['date']" t-out="event['date'].strftime('%d/%m/%Y')"/>
+                                <t t-if="event['detail']"> - <t t-out="event['detail']"/></t>
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <div t-if="event['amount']" class="small fw-bold">
+                                <t t-call="cl_rice_mill.portal_rice_amount" amount="event['amount']" currency="currency"/>
+                            </div>
+                            <a t-if="event['document']" class="small"
+                               t-attf-href="/my/rice/document/#{event['document'][0]}/#{event['document'][1]}">
+                                <i class="fa fa-download"/> PDF
+                            </a>
+                        </div>
+                    </li>
+                </ul>
+
+                <h5>Ask for a service or a loan</h5>
+                <form t-attf-action="/my/rice/#{fs.id}/request" method="post" class="mb-4">
+                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                    <div class="mb-2">
+                        <select name="request_type" class="form-select" required="required">
+                            <option value="service">A service (tractor, harvester, transport)</option>
+                            <option value="loan">A loan</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <textarea name="message" class="form-control" rows="3" required="required" maxlength="2000"
+                                  placeholder="What do you need, how much and when?"/>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Send</button>
+                </form>
+            </div>
+        </t>
+    </template>
+
+    <!-- ================================================================== statement -->
+    <template id="portal_my_rice_statement" name="My Rice Statement">
+        <t t-call="portal.portal_layout">
+            <t t-set="currency" t-value="fs.currency_id"/>
+            <div class="o_cl_rice_portal">
+                <h3 class="mt-2">Statement <small class="text-muted" t-out="fs.season_id.name"/></h3>
+                <form method="get" class="row g-2 align-items-end mb-3">
+                    <div class="col-6 col-md-3">
+                        <label class="form-label small" for="date_from">From</label>
+                        <input type="date" id="date_from" name="date_from" class="form-control form-control-sm" t-att-value="date_from"/>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label small" for="date_to">To</label>
+                        <input type="date" id="date_to" name="date_to" class="form-control form-control-sm" t-att-value="date_to"/>
+                    </div>
+                    <div class="col-12 col-md-6 d-flex gap-2">
+                        <button type="submit" class="btn btn-secondary btn-sm">Show</button>
+                        <a class="btn btn-primary btn-sm"
+                           t-attf-href="/my/rice/#{fs.id}/statement?download=1&amp;date_from=#{date_from}&amp;date_to=#{date_to}">
+                            <i class="fa fa-download me-1"/>Download PDF
+                        </a>
+                    </div>
+                </form>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr><th>Date</th><th>Description</th><th class="text-end">Charges</th>
+                                <th class="text-end">Paid</th><th class="text-end">Balance</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr t-if="statement['opening']">
+                                <td/><td><em>Balance brought forward</em></td><td/><td/>
+                                <td class="text-end"><t t-call="cl_rice_mill.portal_rice_amount" amount="statement['opening']" currency="currency"/></td>
+                            </tr>
+                            <tr t-foreach="statement['lines']" t-as="line">
+                                <td class="small text-nowrap" t-out="line['date'] and line['date'].strftime('%d/%m/%Y')"/>
+                                <td class="small" t-out="line['name']"/>
+                                <td class="text-end small"><t t-if="line['kind'] == 'owed'" t-call="cl_rice_mill.portal_rice_amount" amount="line['amount']" currency="currency"/></td>
+                                <td class="text-end small"><t t-if="line['kind'] == 'earned'" t-call="cl_rice_mill.portal_rice_amount" amount="line['amount']" currency="currency"/></td>
+                                <td class="text-end small"><t t-call="cl_rice_mill.portal_rice_amount" amount="line['balance']" currency="currency"/></td>
+                            </tr>
+                            <tr t-if="not statement['lines']"><td colspan="5" class="text-center text-muted">Nothing in this period.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="fw-bold">
+                    <t t-if="statement['closing'] &gt; 0">You owe: <t t-call="cl_rice_mill.portal_rice_amount" amount="statement['closing']" currency="currency"/></t>
+                    <t t-elif="statement['closing'] &lt; 0">Held for you: <t t-call="cl_rice_mill.portal_rice_amount" amount="-statement['closing']" currency="currency"/></t>
+                    <t t-else="">Your account is clear.</t>
+                </p>
+            </div>
+        </t>
+    </template>
+</odoo>

@@ -324,6 +324,103 @@ class ClRiceFarmerSeason(models.Model):
             line['sequence'] = sequence
         return lines
 
+    # ------------------------------------------------------------------
+    # Farmer portal
+    # ------------------------------------------------------------------
+    def _cl_portal_stock(self):
+        """Lots the farmer still holds in the warehouse: product, lot, kg and bags."""
+        self.ensure_one()
+        lots = self.env['stock.lot'].sudo().search([('cl_farmer_season_id', '=', self.id)])
+        return [
+            {'product': lot.product_id.name, 'lot': lot.name, 'kg': lot.cl_kg_held, 'bags': lot.cl_bag_qty,
+             'since': lot.cl_first_in_date}
+            for lot in lots if lot.cl_kg_held > 0
+        ]
+
+    def _cl_portal_timeline(self):
+        """What happened on the farmer's season, newest first, in plain words."""
+        self.ensure_one()
+        fs = self.sudo()
+        events = []
+
+        def add(date, icon, title, detail='', amount=0.0, document=None):
+            events.append({'date': date, 'icon': icon, 'title': title, 'detail': detail, 'amount': amount,
+                           'document': document})
+
+        for loan in fs.loan_ids.filtered(lambda l: l.state in ('disbursed', 'settled')):
+            add(loan.disbursement_date or loan.date, 'fa-money', fs._cl_label(loan), loan.purpose or '', loan.amount,
+                ('loan', loan.id))
+        for job in fs.service_job_ids.filtered(lambda j: j.state == 'charged'):
+            add(job.date, 'fa-truck', fs._cl_label(job), job.vehicle_id.display_name or '', job.amount)
+        for intake in fs.intake_ids.filtered(lambda i: i.state == 'done'):
+            add(intake.date.date(), 'fa-download', self.env._("Paddy received: %(kg)s kg in %(bags)s bags",
+                kg=f"{intake.net_weight:,.0f}", bags=intake.bags), intake.name, 0.0, ('receipt', intake.id))
+        for job in fs.milling_job_ids.filtered(lambda j: j.state == 'done'):
+            add(job.date_end and job.date_end.date(), 'fa-cogs', self.env._(
+                "Milled %(kg)s kg of paddy: %(rice)s kg of rice (%(pct)s%%)",
+                kg=f"{job.input_kg:,.0f}", rice=f"{job.rice_kg:,.0f}", pct=round(job.recovery_pct, 1)),
+                job.name, job.fee_amount, ('milling', job.id))
+        releases = self.env['cl.rice.stock.release'].sudo().search(
+            [('farmer_season_id', '=', fs.id), ('state', '=', 'released')])
+        for release in releases:
+            add(release.released_date and release.released_date.date(), 'fa-upload', self.env._(
+                "Released %(kg)s kg to %(buyer)s", kg=f"{release.quantity:,.0f}", buyer=release.buyer_id.name),
+                release.name)
+        for payment in fs.payment_ids.filtered(lambda p: p.state == 'posted'):
+            add(payment.date, 'fa-check-circle', fs._cl_label(payment), '', payment.amount)
+        for settlement in fs.settlement_ids.filtered(lambda s: s.state not in ('draft', 'cancelled', 'reversed')):
+            add(settlement.date, 'fa-flag-checkered', self.env._("Settlement %s", settlement.name),
+                dict(settlement._fields['settlement_type']._description_selection(self.env))[settlement.settlement_type],
+                settlement.net_amount, ('settlement', settlement.id))
+        events.sort(key=lambda e: e['date'] or fields.Date.today(), reverse=True)
+        return events
+
+    def _cl_portal_request(self, request_type, message):
+        """A farmer asks for a service or a loan from the portal: the field officer gets a to-do."""
+        self.ensure_one()
+        fs = self.sudo()
+        labels = {'service': self.env._("Service request"), 'loan': self.env._("Loan request")}
+        user = fs.field_officer_id or self.env.ref('cl_rice_mill.cl_rice_mill_group_manager').all_user_ids[:1]
+        summary = f"{labels[request_type]} - {fs.partner_id.name}"
+        fs.activity_schedule('mail.mail_activity_data_todo', user_id=user.id or self.env.uid,
+                             summary=summary, note=message)
+        fs.message_post(body=self.env._("%(summary)s from the farmer portal: %(message)s",
+                                        summary=summary, message=message))
+        return user
+
+    def _cl_statement(self, date_from=None, date_to=None):
+        """Farmer account statement: every charge and receipt between the dates with a running balance.
+
+        A positive balance is owed by the farmer, a negative one is due to the farmer (funds held).
+        """
+        self.ensure_one()
+        opening = 0.0
+        lines = []
+        for line in self._cl_statement_breakdown():
+            date = line['date']
+            signed = line['amount'] if line['kind'] == 'owed' else -line['amount']
+            if date_from and date and date < date_from:
+                opening += signed
+                continue
+            if date_to and date and date > date_to:
+                continue
+            lines.append(line)
+        balance = opening
+        for line in lines:
+            balance += line['amount'] if line['kind'] == 'owed' else -line['amount']
+            line['balance'] = balance
+        charges = sum(line['amount'] for line in lines if line['kind'] == 'owed')
+        receipts = sum(line['amount'] for line in lines if line['kind'] == 'earned')
+        return {
+            'date_from': date_from,
+            'date_to': date_to,
+            'opening': opening,
+            'lines': lines,
+            'charges': charges,
+            'receipts': receipts,
+            'closing': balance,
+        }
+
     @api.depends('loan_ids.state', 'loan_ids.amount',
                  'service_job_ids.state', 'service_job_ids.amount', 'service_job_ids.operator_paid_amount',
                  'milling_job_ids.state', 'milling_job_ids.fee_amount', 'storage_fee_ids.amount',
