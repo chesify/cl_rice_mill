@@ -95,4 +95,12 @@
         <field name="use_date_range" eval="True"/>
         <field name="company_id" eval="False"/>
     </record>
+    <record id="seq_cl_rice_trip" model="ir.sequence">
+        <field name="name">Staff Trip</field>
+        <field name="code">cl.rice.trip</field>
+        <field name="prefix">TR/%(range_year)s/</field>
+        <field name="padding">4</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="company_id" eval="False"/>
+    </record>
 </odoo>

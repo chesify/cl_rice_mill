@@ -80,3 +80,7 @@ access_cl_rice_report_cash_book_accountant,cl.rice.report.cash.book.accountant,c
 access_cl_rice_report_cash_book_manager,cl.rice.report.cash.book.manager,cl.rice.report.cash.book,cl_rice_mill_group_manager,r,
 cl_rice_report_cash_book_rule_company,cl.rice.report.cash.book multi-company,cl.rice.report.cash.book,,crud,"[('company_id', 'in', company_ids)]"
 access_cl_rice_setup_system,cl.rice.setup.system,cl.rice.setup,base.group_system,crud,
+access_cl_rice_trip_field_officer,cl.rice.trip.field.officer,cl.rice.trip,cl_rice_mill_group_field_officer,cru,"[('user_id', '=', user.id)]"
+access_cl_rice_trip_accountant,cl.rice.trip.accountant,cl.rice.trip,cl_rice_mill_group_accountant,cru,
+access_cl_rice_trip_manager,cl.rice.trip.manager,cl.rice.trip,cl_rice_mill_group_manager,crud,
+cl_rice_trip_rule_company,cl.rice.trip multi-company,cl.rice.trip,,crud,"[('company_id', 'in', company_ids)]"

@@ -448,7 +448,8 @@ class ClRiceFarmerSeason(models.Model):
         """Analytic distribution putting 100% on this farmer season and on each extra account
         (each extra account must belong to another plan)."""
         self.ensure_one()
-        accounts = self.analytic_account_id | (extra_accounts or self.env['account.analytic.account'])
+        accounts = (self.analytic_account_id | self.season_id.project_id.account_id
+                    | (extra_accounts or self.env['account.analytic.account']))
         return {",".join(str(account_id) for account_id in accounts.ids): 100.0}
 
     def _cl_tag_receivable_lines(self, moves):

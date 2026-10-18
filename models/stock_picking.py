@@ -8,6 +8,13 @@ class StockPicking(models.Model):
     _inherit = 'stock.picking'
 
     @api.model
+    def _cl_rice_project(self, lines, company):
+        """Season project of the lots moved, or the running season's project."""
+        lots = self.env['stock.lot'].concat(line['lot'] for line in lines if line.get('lot'))
+        season = (lots.cl_farmer_season_id.season_id | lots.cl_season_id)[:1]
+        return (season or self.env['cl.rice.season']._cl_current(company)).project_id
+
+    @api.model
     def _cl_rice_done_transfer(self, picking_type, location, location_dest, owner, lines, origin, partner=None):
         """Create and validate a transfer moving exactly the given lots.
 
@@ -26,6 +33,7 @@ class StockPicking(models.Model):
             'partner_id': (partner or owner).id,
             'origin': origin,
             'company_id': picking_type.company_id.id,
+            'project_id': self._cl_rice_project(lines, picking_type.company_id).id,
         })
         moves = Move.create([{
             'product_id': line['product'].id,

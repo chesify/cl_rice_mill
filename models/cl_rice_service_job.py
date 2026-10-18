@@ -46,9 +46,14 @@ class ClRiceServiceJob(models.Model):
 
     # internal cost of the job (job margin and cost of free services; not posted)
     fuel_litres = fields.Float(string="Fuel Used (L)", digits=(16, 2))
-    fuel_cost = fields.Monetary()
-    operator_cost = fields.Monetary(help="Operator pay for this job borne by the mill.")
+    fuel_cost = fields.Monetary(
+        compute='_compute_fuel_cost', store=True,
+        help="Litres used x the fuel price of the settings. Posted to the machine when the job is charged.")
+    operator_cost = fields.Monetary(
+        compute='_compute_operator_cost', store=True, readonly=False,
+        help="Operator pay for this job borne by the mill (quantity x operator pay of the rate).")
     cost_total = fields.Monetary(string="Job Cost", compute='_compute_amount', store=True)
+    cost_move_id = fields.Many2one('account.move', string="Job Cost Entry", readonly=True, copy=False)
 
     # operator paid on behalf of the farmer
     operator_paid_amount = fields.Monetary(
@@ -97,6 +102,16 @@ class ClRiceServiceJob(models.Model):
         for job in self:
             job.price_unit = job.rate_id._cl_price('farmer') if job.rate_id else job.price_unit
 
+    @api.depends('fuel_litres', 'company_id.cl_rice_fuel_price')
+    def _compute_fuel_cost(self):
+        for job in self:
+            job.fuel_cost = job.currency_id.round(job.fuel_litres * job.company_id.cl_rice_fuel_price)
+
+    @api.depends('quantity', 'rate_id.operator_rate')
+    def _compute_operator_cost(self):
+        for job in self:
+            job.operator_cost = job.currency_id.round(job.quantity * job.rate_id.operator_rate)
+
     @api.depends('quantity', 'price_unit', 'is_free', 'fuel_cost', 'operator_cost')
     def _compute_amount(self):
         for job in self:
@@ -134,7 +149,7 @@ class ClRiceServiceJob(models.Model):
         return jobs
 
     def write(self, vals):
-        frozen = {'farmer_season_id', 'service_type', 'quantity', 'price_unit', 'is_free', 'operator_paid_amount',
+        frozen = {'fuel_litres', 'operator_cost', 'farmer_season_id', 'service_type', 'quantity', 'price_unit', 'is_free', 'operator_paid_amount',
                   'operator_partner_id', 'operator_payment_mode', 'operator_journal_id', 'rate_id'}
         if frozen & set(vals) and self.filtered(lambda j: j.state in ('charged', 'cancelled')):
             raise UserError(self.env._("A charged service job cannot be changed. Reverse it and record a new one."))
@@ -168,6 +183,7 @@ class ClRiceServiceJob(models.Model):
                 job._cl_create_invoice()
             if job.operator_paid_amount:
                 job._cl_pay_operator()
+            job._cl_post_job_cost()
             job.state = 'charged'
             if job.amount or job.operator_paid_amount:
                 job.partner_id._cl_rice_notify('service_charged', job)
@@ -214,6 +230,47 @@ class ClRiceServiceJob(models.Model):
         invoice.action_post()
         fs._cl_tag_receivable_lines(invoice)
         self.invoice_id = invoice
+
+    def _cl_post_job_cost(self):
+        """Book what the job cost the mill (fuel from the tank, operator wages) on the machine, the
+        service line, the farmer season and the season project. Free jobs are costed too."""
+        self.ensure_one()
+        if not self.fuel_cost and not self.operator_cost:
+            return
+        company = self.company_id
+        accounts = (company.cl_rice_fuel_clearing_account_id, company.cl_rice_machine_cost_account_id,
+                    company.cl_rice_operator_wage_account_id, company.cl_rice_operator_accrual_account_id,
+                    company.cl_rice_cost_journal_id)
+        if not all(accounts):
+            raise UserError(self.env._("Run the Rice Mill setup: the machine cost accounts are missing."))
+        distribution = self._cl_analytic_distribution()
+        label = self.env._("Cost of %(job)s - %(machine)s", job=self.name, machine=self.vehicle_id.display_name or '-')
+        line_vals = []
+        if self.fuel_cost:
+            line_vals += [
+                {'name': self.env._("Fuel %(litres)s L - %(label)s", litres=self.fuel_litres, label=label),
+                 'account_id': company.cl_rice_machine_cost_account_id.id, 'debit': self.fuel_cost,
+                 'analytic_distribution': distribution, 'vehicle_id': self.vehicle_id.id},
+                {'name': label, 'account_id': company.cl_rice_fuel_clearing_account_id.id, 'credit': self.fuel_cost},
+            ]
+        if self.operator_cost:
+            line_vals += [
+                {'name': self.env._("Operator wages - %s", label),
+                 'account_id': company.cl_rice_operator_wage_account_id.id, 'debit': self.operator_cost,
+                 'analytic_distribution': distribution, 'vehicle_id': self.vehicle_id.id},
+                {'name': label, 'account_id': company.cl_rice_operator_accrual_account_id.id,
+                 'partner_id': self.operator_id.work_contact_id.id, 'credit': self.operator_cost},
+            ]
+        move = self.env['account.move'].sudo().create({
+            'move_type': 'entry',
+            'journal_id': company.cl_rice_cost_journal_id.id,
+            'date': self.date,
+            'ref': label,
+            'company_id': company.id,
+            'line_ids': [(0, 0, vals) for vals in line_vals],
+        })
+        move.action_post()
+        self.cost_move_id = move
 
     def _cl_pay_operator(self):
         self.ensure_one()
@@ -302,7 +359,7 @@ class ClRiceServiceJob(models.Model):
         if self.state != 'charged':
             raise UserError(self.env._("Only charged jobs can be reversed."))
         self.farmer_season_id._cl_check_open()
-        moves = (self.invoice_id | self.operator_move_id).filtered(lambda m: m.state == 'posted')
+        moves = (self.invoice_id | self.operator_move_id | self.cost_move_id).filtered(lambda m: m.state == 'posted')
         if moves:
             moves.line_ids.remove_move_reconcile()
             reversals = moves._reverse_moves(

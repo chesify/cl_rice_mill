@@ -92,10 +92,11 @@
                         <page string="Job Cost" name="cost">
                             <group>
                                 <group>
-                                    <field name="fuel_litres"/>
+                                    <field name="fuel_litres" readonly="state == 'charged'"/>
                                     <field name="fuel_cost"/>
-                                    <field name="operator_cost"/>
+                                    <field name="operator_cost" readonly="state == 'charged'"/>
                                     <field name="cost_total"/>
+                                    <field name="cost_move_id" groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
                                 </group>
                             </group>
                         </page>

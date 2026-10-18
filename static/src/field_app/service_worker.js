@@ -2,7 +2,7 @@
  * Data requests (POST) always go to the network; the page queues them itself. */
 "use strict";
 
-const CACHE = "cl-rice-field-v1";
+const CACHE = "cl-rice-field-v2";
 const SHELL = [
     "/rice/field/",
     "/rice/field/manifest.webmanifest",

@@ -27,6 +27,7 @@ class ClRiceFieldSync(models.AbstractModel):
         ])
         Vehicle = self.env['fleet.vehicle']
         machines = Vehicle.search([('cl_machine_category', 'in', ('tractor', 'harvester'))])
+        vehicles = Vehicle.search([('cl_machine_category', 'in', ('motorcycle', 'car', 'truck'))])
         operators = self.env['hr.employee.public'].search([('company_id', 'in', self.env.companies.ids)])
         types = dict(self.env['cl.rice.service.job']._fields['service_type']._description_selection(self.env))
         return {
@@ -40,6 +41,7 @@ class ClRiceFieldSync(models.AbstractModel):
             } for fs in seasons],
             'services': [{'id': key, 'name': label} for key, label in types.items()],
             'machines': [{'id': machine.id, 'name': machine.display_name} for machine in machines],
+            'vehicles': [{'id': vehicle.id, 'name': vehicle.display_name} for vehicle in vehicles],
             'operators': [{'id': employee.id, 'name': employee.name} for employee in operators],
         }
 
@@ -71,10 +73,14 @@ class ClRiceFieldSync(models.AbstractModel):
                     'error': self.env._("Missing or invalid record identifier.")}
         kind = record.get('kind')
         data = record.get('data') if isinstance(record.get('data'), dict) else {}
-        handler = {'service_job': self._cl_create_service_job, 'farmer': self._cl_create_farmer}.get(kind)
-        if not handler:
+        handlers = {
+            'service_job': ('cl.rice.service.job', self._cl_create_service_job),
+            'farmer': ('res.partner', self._cl_create_farmer),
+            'trip': ('cl.rice.trip', self._cl_create_trip),
+        }
+        if kind not in handlers:
             return {'uuid': uuid, 'status': 'failed', 'error': self.env._("Unknown record type.")}
-        model = 'cl.rice.service.job' if kind == 'service_job' else 'res.partner'
+        model, handler = handlers[kind]
         # sudo: detect a record already received even if the officer can no longer read it
         existing = self.env[model].sudo().with_context(active_test=False).search(
             [('cl_client_uuid', '=', uuid)], limit=1)
@@ -120,6 +126,38 @@ class ClRiceFieldSync(models.AbstractModel):
             values['photo'] = data['photo'].split(',')[-1]  # accept data URLs
         # the job stays a draft: the office checks it before the farmer is charged
         return self.env['cl.rice.service.job'].create(values)
+
+    @api.model
+    def _cl_create_trip(self, uuid, data):
+        employee = self.env.user.employee_id
+        if not employee:
+            raise UserError(self.env._("Your user is not linked to an employee: ask the office."))
+        vehicle = self.env['fleet.vehicle'].browse(int(data.get('vehicle_id') or 0)).exists()
+        if not vehicle:
+            raise UserError(self.env._("Vehicle not found."))
+        fs = self.env['cl.rice.farmer.season'].browse(int(data.get('farmer_season_id') or 0)).exists()
+        if fs and fs.field_officer_id != self.env.user:
+            raise AccessError(self.env._("This farmer is not assigned to you."))
+        try:
+            values = {
+                'odometer_start': float(data.get('odometer_start') or 0.0),
+                'odometer_end': float(data.get('odometer_end') or 0.0),
+                'fuel_litres': float(data.get('fuel_litres') or 0.0),
+            }
+        except (TypeError, ValueError):
+            raise UserError(self.env._("Invalid number in the trip.")) from None
+        # the trip stays a draft: the office checks it before posting its cost
+        return self.env['cl.rice.trip'].create({
+            **values,
+            'employee_id': employee.id,
+            'vehicle_id': vehicle.id,
+            'date': fields.Date.to_date(data.get('date')) or fields.Date.context_today(self),
+            'purpose': (data.get('purpose') or self.env._("Field visit"))[:128],
+            'farmer_season_id': fs.id,
+            'village': (data.get('village') or '')[:64],
+            'cl_client_uuid': uuid,
+            'source': 'field',
+        })
 
     @api.model
     def _cl_create_farmer(self, uuid, data):

@@ -108,9 +108,11 @@ class ClRiceStorageFee(models.Model):
         if not company.cl_rice_storage_income_account_id or not company.cl_rice_charge_journal_id:
             return
         storage_account = self.env.ref('cl_rice_mill.analytic_service_storage')
-        distribution = (
-            fs._cl_analytic_distribution(storage_account) if fs else {str(storage_account.id): 100.0}
-        )
+        if fs:
+            distribution = fs._cl_analytic_distribution(storage_account)
+        else:
+            accounts = storage_account | self.env['cl.rice.season']._cl_current(company).project_id.account_id
+            distribution = {",".join(str(i) for i in accounts.ids): 100.0}
         basis_label = dict(self._fields['basis']._description_selection(self.env))
         invoice = self.env['account.move'].sudo().create({
             'move_type': 'out_invoice',

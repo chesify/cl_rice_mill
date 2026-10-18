@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="cl_rice_trip_view_list" model="ir.ui.view">
+        <field name="name">cl.rice.trip.view.list</field>
+        <field name="model">cl.rice.trip</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="state == 'cancelled'">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="employee_id"/>
+                <field name="vehicle_id"/>
+                <field name="purpose"/>
+                <field name="farmer_season_id" optional="show"/>
+                <field name="village" optional="hide"/>
+                <field name="km" sum="Total"/>
+                <field name="fuel_litres" sum="Total"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="fuel_cost" sum="Total"/>
+                <field name="source" optional="hide"/>
+                <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-success="state == 'posted'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="cl_rice_trip_view_form" model="ir.ui.view">
+        <field name="name">cl.rice.trip.view.form</field>
+        <field name="model">cl.rice.trip</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_post" type="object" string="Post" class="btn-primary"
+                            invisible="state != 'draft'" groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
+                    <button name="action_cancel" type="object" string="Cancel" invisible="state == 'cancelled'"
+                            groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,posted"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="employee_id" readonly="state != 'draft'"/>
+                            <field name="vehicle_id" readonly="state != 'draft'"/>
+                            <field name="date" readonly="state != 'draft'"/>
+                            <field name="purpose"/>
+                            <field name="farmer_season_id" readonly="state != 'draft'"/>
+                            <field name="village"/>
+                            <field name="company_id" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="odometer_start" readonly="state != 'draft'"/>
+                            <field name="odometer_end" readonly="state != 'draft'"/>
+                            <field name="km"/>
+                            <field name="fuel_litres" readonly="state != 'draft'"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="fuel_cost"/>
+                            <field name="move_id" groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
+                            <field name="source"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="cl_rice_trip_view_search" model="ir.ui.view">
+        <field name="name">cl.rice.trip.view.search</field>
+        <field name="model">cl.rice.trip</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="employee_id"/>
+                <field name="vehicle_id"/>
+                <field name="farmer_season_id"/>
+                <filter name="to_post" string="To Post" domain="[('state', '=', 'draft')]"/>
+                <filter name="from_field" string="From the Field App" domain="[('source', '=', 'field')]"/>
+                <separator/>
+                <filter name="date" string="Date" date="date"/>
+                <group>
+                    <filter name="group_employee" string="Staff" context="{'group_by': 'employee_id'}"/>
+                    <filter name="group_vehicle" string="Vehicle" context="{'group_by': 'vehicle_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="cl_rice_trip_action" model="ir.actions.act_window">
+        <field name="name">Staff Trips</field>
+        <field name="res_model">cl.rice.trip</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Log a field trip</p>
+            <p>Trips by motorcycle or car: their fuel is booked on the vehicle and the farmer season.</p>
+        </field>
+    </record>
+</odoo>

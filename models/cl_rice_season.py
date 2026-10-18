@@ -34,6 +34,9 @@ class ClRiceSeason(models.Model):
         string="Reference Rice Price (per kg)", tracking=True,
         help="Used to value milled rice held as collateral.")
     project_id = fields.Many2one('project.project', string="Project", readonly=True, copy=False)
+    project_account_id = fields.Many2one(
+        'account.analytic.account', string="Project Analytic Account", related='project_id.account_id',
+        help="Every entry of the season carries it, so the project shows the season's income and costs.")
     analytic_plan_id = fields.Many2one('account.analytic.plan', string="Analytic Plan", readonly=True, copy=False)
     farmer_season_ids = fields.One2many('cl.rice.farmer.season', 'season_id', string="Farmer Seasons")
     active = fields.Boolean(default=True)
@@ -74,7 +77,35 @@ class ClRiceSeason(models.Model):
             for season in self:
                 season.analytic_plan_id.sudo().name = season.name
                 season.project_id.sudo().name = season.name
+                season.project_id.account_id.sudo().name = season.name
         return res
+
+    def _cl_project_account_vals(self):
+        self.ensure_one()
+        return {
+            'name': self.name,
+            'code': f"PRJ-{self.code}",
+            'plan_id': self.env.ref('analytic.analytic_plan_projects').id,
+            'company_id': self.company_id.id,
+        }
+
+    def _cl_ensure_project_account(self):
+        """Give the season project its analytic account (reusing the one already set on the project)."""
+        AnalyticAccount = self.env['account.analytic.account'].sudo()
+        for season in self.filtered('project_id'):
+            account = season.project_id.account_id
+            if account:
+                account.write(season._cl_project_account_vals())
+            else:
+                season.project_id.sudo().account_id = AnalyticAccount.create(season._cl_project_account_vals())
+
+    @api.model
+    def _cl_current(self, company=None):
+        """The running season of the company (the latest one started and not closed)."""
+        company = company or self.env.company
+        domain = [('company_id', '=', company.id)]
+        return (self.search(domain + [('state', 'in', ('active', 'harvest', 'closing'))], order='date_start desc', limit=1)
+                or self.search(domain + [('state', '=', 'planning')], order='date_start desc', limit=1))
 
     def _cl_create_project_and_plan(self):
         root_plan = self.env.ref('cl_rice_mill.analytic_plan_farmer_seasons')
@@ -87,6 +118,7 @@ class ClRiceSeason(models.Model):
                 'name': season.name,
                 'company_id': season.company_id.id,
             })
+        self._cl_ensure_project_account()
 
     def action_activate(self):
         self._cl_set_state('planning', 'active')

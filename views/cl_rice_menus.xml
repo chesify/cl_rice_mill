@@ -40,6 +40,10 @@
               action="cl_rice_loan_action" sequence="10"/>
     <menuitem id="cl_rice_farmer_payment_menu" name="Payments Received" parent="cl_rice_menu_finance"
               action="cl_rice_farmer_payment_action" sequence="20"/>
+    <menuitem id="cl_rice_trip_menu" name="Staff Trips" parent="cl_rice_menu_finance"
+              action="cl_rice_trip_action" sequence="25"/>
+    <menuitem id="cl_rice_expense_menu" name="Expenses" parent="cl_rice_menu_finance"
+              action="cl_rice_expense_action" sequence="26"/>
     <menuitem id="cl_rice_storage_fee_menu" name="Storage Fees" parent="cl_rice_menu_finance"
               action="cl_rice_storage_fee_action" sequence="30"/>
     <menuitem id="cl_rice_settlement_menu" name="Settlements" parent="cl_rice_menu_finance"

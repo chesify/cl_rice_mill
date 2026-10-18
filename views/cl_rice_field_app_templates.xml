@@ -19,6 +19,7 @@
         <nav class="o_cl_rice_field_tabs">
             <button type="button" data-tab="service" class="active">Record Service</button>
             <button type="button" data-tab="farmer">Register Farmer</button>
+            <button type="button" data-tab="trip">Trip</button>
             <button type="button" data-tab="outbox">Outbox <span id="o_cl_rice_field_count">0</span></button>
         </nav>
         <main>
@@ -44,6 +45,17 @@
                 <input name="latitude" type="hidden"/>
                 <input name="longitude" type="hidden"/>
                 <p id="o_cl_rice_field_gps_status" class="o_cl_rice_field_muted"></p>
+                <button type="submit" class="o_cl_rice_field_primary">Save</button>
+            </form>
+            <form id="o_cl_rice_field_trip" class="o_cl_rice_field_panel" data-panel="trip" hidden="hidden">
+                <label>Vehicle<select name="vehicle_id" required="required"></select></label>
+                <label>Purpose<input name="purpose" required="required"/></label>
+                <label>Farmer (optional)<select name="farmer_season_id"><option value="">-</option></select></label>
+                <label>Village<input name="village"/></label>
+                <label>Odometer at start<input name="odometer_start" type="number" step="0.1" min="0"/></label>
+                <label>Odometer at end<input name="odometer_end" type="number" step="0.1" min="0"/></label>
+                <label>Fuel used (litres)<input name="fuel_litres" type="number" step="0.1" min="0"/></label>
+                <label>Date<input name="date" type="date" required="required"/></label>
                 <button type="submit" class="o_cl_rice_field_primary">Save</button>
             </form>
             <section class="o_cl_rice_field_panel" data-panel="outbox" hidden="hidden">

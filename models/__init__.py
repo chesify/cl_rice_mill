@@ -28,3 +28,5 @@ from . import cl_rice_settlement_line
 from . import cl_rice_opening_balance
 from . import cl_rice_opening_balance_line
 from . import cl_rice_field_sync
+from . import hr_expense
+from . import cl_rice_trip

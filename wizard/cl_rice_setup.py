@@ -22,6 +22,11 @@ class ClRiceSetup(models.TransientModel):
         help="Create the Cash, Bank, M-Pesa, Tigo Pesa and Airtel Money journals that are missing.")
     storage_enabled = fields.Boolean(
         string="Charge Storage Fees", default=lambda self: self.env.company.cl_rice_storage_enabled)
+    currency_id = fields.Many2one(related='company_id.currency_id')
+    fuel_price = fields.Monetary(
+        string="Fuel Price per Litre", default=lambda self: self.env.company.cl_rice_fuel_price,
+        help="Values the fuel used by service jobs and trips.")
+    logo = fields.Binary(string="Company Logo", help="Printed on receipts, statements and gate passes.")
     summary = fields.Html(readonly=True)
 
     def action_apply(self):
@@ -32,7 +37,11 @@ class ClRiceSetup(models.TransientModel):
         if not company.chart_template:
             raise UserError(self.env._("Install a chart of accounts for %s first (Accounting settings).", company.name))
         company._cl_rice_setup_company()
-        company.cl_rice_storage_enabled = self.storage_enabled
+        company.write({'cl_rice_storage_enabled': self.storage_enabled, 'cl_rice_fuel_price': self.fuel_price})
+        if self.logo:
+            company.logo = self.logo
+        company._cl_rice_setup_documents()
+        self.env['res.company']._cl_rice_enable_analytic()
         journals = self.env['account.journal']
         if self.create_payment_journals:
             journals = self._cl_create_payment_journals(company)

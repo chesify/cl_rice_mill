@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="product_category_rice_mill_costs" model="product.category">
+        <field name="name">Rice Mill Costs</field>
+    </record>
+
+    <record id="product_expense_diesel" model="product.product">
+        <field name="name">Diesel / Fuel</field>
+        <field name="default_code">EXP-FUEL</field>
+        <field name="type">service</field>
+        <field name="uom_id" ref="uom.product_uom_litre"/>
+        <field name="categ_id" ref="product_category_rice_mill_costs"/>
+        <field name="can_be_expensed" eval="True"/>
+        <field name="purchase_ok" eval="True"/>
+        <field name="sale_ok" eval="False"/>
+    </record>
+    <record id="product_expense_repairs" model="product.product">
+        <field name="name">Spare Parts and Repairs</field>
+        <field name="default_code">EXP-REPAIR</field>
+        <field name="type">service</field>
+        <field name="categ_id" ref="product_category_rice_mill_costs"/>
+        <field name="can_be_expensed" eval="True"/>
+        <field name="purchase_ok" eval="True"/>
+        <field name="sale_ok" eval="False"/>
+    </record>
+    <record id="product_expense_operator_wages" model="product.product">
+        <field name="name">Operator Wages</field>
+        <field name="default_code">EXP-WAGES</field>
+        <field name="type">service</field>
+        <field name="categ_id" ref="product_category_rice_mill_costs"/>
+        <field name="can_be_expensed" eval="True"/>
+        <field name="purchase_ok" eval="True"/>
+        <field name="sale_ok" eval="False"/>
+    </record>
+    <record id="product_expense_bags" model="product.product">
+        <field name="name">Bags and Twine</field>
+        <field name="default_code">EXP-BAGS</field>
+        <field name="type">service</field>
+        <field name="categ_id" ref="product_category_rice_mill_costs"/>
+        <field name="can_be_expensed" eval="True"/>
+        <field name="purchase_ok" eval="True"/>
+        <field name="sale_ok" eval="False"/>
+    </record>
+    <record id="product_expense_transport" model="product.product">
+        <field name="name">Staff Field Transport</field>
+        <field name="default_code">EXP-TRANSPORT</field>
+        <field name="type">service</field>
+        <field name="categ_id" ref="product_category_rice_mill_costs"/>
+        <field name="can_be_expensed" eval="True"/>
+        <field name="purchase_ok" eval="True"/>
+        <field name="sale_ok" eval="False"/>
+    </record>
+    <record id="product_expense_airtime" model="product.product">
+        <field name="name">Airtime and Communication</field>
+        <field name="default_code">EXP-AIRTIME</field>
+        <field name="type">service</field>
+        <field name="categ_id" ref="product_category_rice_mill_costs"/>
+        <field name="can_be_expensed" eval="True"/>
+        <field name="purchase_ok" eval="True"/>
+        <field name="sale_ok" eval="False"/>
+    </record>
+    <record id="product_expense_office" model="product.product">
+        <field name="name">Office and Warehouse Costs</field>
+        <field name="default_code">EXP-OFFICE</field>
+        <field name="type">service</field>
+        <field name="categ_id" ref="product_category_rice_mill_costs"/>
+        <field name="can_be_expensed" eval="True"/>
+        <field name="purchase_ok" eval="True"/>
+        <field name="sale_ok" eval="False"/>
+    </record>
+</odoo>

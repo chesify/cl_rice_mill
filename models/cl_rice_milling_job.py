@@ -312,6 +312,7 @@ class ClRiceMillingJob(models.Model):
             accounts |= self.vehicle_id._cl_get_analytic_account()
         if self.farmer_season_id:
             return self.farmer_season_id._cl_analytic_distribution(accounts)
+        accounts |= self.env['cl.rice.season']._cl_current(self.company_id).project_id.account_id
         return {",".join(str(i) for i in accounts.ids): 100.0}
 
     def _cl_charge(self):

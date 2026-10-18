@@ -15,6 +15,9 @@
                     <field name="company_id" groups="base.group_multi_company"/>
                     <field name="create_payment_journals"/>
                     <field name="storage_enabled"/>
+                    <field name="currency_id" invisible="1"/>
+                    <field name="fuel_price"/>
+                    <field name="logo" widget="image" options="{'size': [0, 90]}"/>
                 </group>
                 <footer>
                     <button name="action_apply" type="object" string="Set Up" class="btn-primary"/>

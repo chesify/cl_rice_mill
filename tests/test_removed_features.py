@@ -4,7 +4,7 @@ from odoo.tests import tagged
 
 from .common import ClRiceCommon
 
-REMOVED_WORDS = ('interest', 'commission', 'proceeds', 'clearing', 'sales_mode', 'split', 'bran_value',
+REMOVED_WORDS = ('interest', 'commission', 'proceeds', 'rice_clearing', 'sales_mode', 'split', 'bran_value',
                  'husk_value', 'broken_value', 'bran_policy', 'husk_policy', 'paddy_warehouse', 'rice_rice_warehouse',
                  'byproduct_credit', 'farmer_price', 'ownership')
 

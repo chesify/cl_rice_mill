@@ -12,6 +12,26 @@ RICE_ACCOUNTS = [
     ('cl_rice_milling_income_account_id', 'RM4350', "Milling Income", 'income', False),
     ('cl_rice_byproduct_income_account_id', 'RM4370', "By-products Sales Income", 'income', False),
     ('cl_rice_other_income_account_id', 'RM4380', "Other Farmer Services Income", 'income', False),
+    ('cl_rice_fuel_clearing_account_id', 'RM1410', "Fuel Clearing", 'asset_current', False),
+    ('cl_rice_operator_accrual_account_id', 'RM2410', "Accrued Operator Wages", 'liability_current', False),
+    ('cl_rice_machine_cost_account_id', 'RM5110', "Machine Running Cost (Fuel)", 'expense_direct_cost', False),
+    ('cl_rice_operator_wage_account_id', 'RM5120', "Operator Wages", 'expense_direct_cost', False),
+    ('cl_rice_repair_account_id', 'RM5130', "Spare Parts and Repairs", 'expense', False),
+    ('cl_rice_bags_account_id', 'RM5140', "Bags and Twine", 'expense', False),
+    ('cl_rice_transport_account_id', 'RM5150', "Staff Field Transport", 'expense', False),
+    ('cl_rice_airtime_account_id', 'RM5160', "Airtime and Communication", 'expense', False),
+    ('cl_rice_office_account_id', 'RM5170', "Office and Warehouse Costs", 'expense', False),
+]
+
+# expense product xml id -> company account field used as its expense account
+EXPENSE_PRODUCTS = [
+    ('product_expense_diesel', 'cl_rice_fuel_clearing_account_id'),
+    ('product_expense_repairs', 'cl_rice_repair_account_id'),
+    ('product_expense_operator_wages', 'cl_rice_operator_accrual_account_id'),
+    ('product_expense_bags', 'cl_rice_bags_account_id'),
+    ('product_expense_transport', 'cl_rice_transport_account_id'),
+    ('product_expense_airtime', 'cl_rice_airtime_account_id'),
+    ('product_expense_office', 'cl_rice_office_account_id'),
 ]
 
 # (field name, code, name, type)
@@ -20,6 +40,7 @@ RICE_JOURNALS = [
     ('cl_rice_walkin_journal_id', 'RMWI', "Walk-in Milling", 'sale'),
     ('cl_rice_loan_journal_id', 'RMLN', "Farmer Accounts", 'general'),
     ('cl_rice_settlement_journal_id', 'RMST', "Farmer Settlements", 'general'),
+    ('cl_rice_cost_journal_id', 'RMMC', "Machine and Field Costs", 'general'),
 ]
 
 # (field name, name)
@@ -93,7 +114,27 @@ class ResCompany(models.Model):
     cl_rice_byproduct_income_account_id = fields.Many2one('account.account', string="By-products Sales Income")
     cl_rice_other_income_account_id = fields.Many2one('account.account', string="Other Services Income")
 
+    # Machine and field costs
+    cl_rice_fuel_price = fields.Monetary(
+        string="Fuel Price per Litre", currency_field='currency_id',
+        help="Values the litres used by service jobs and trips. Fuel bills go to the Fuel Clearing account.")
+    cl_rice_fuel_clearing_account_id = fields.Many2one(
+        'account.account', string="Fuel Clearing",
+        help="Diesel bills are booked here; jobs and trips move the fuel they use to the machine costs.")
+    cl_rice_operator_accrual_account_id = fields.Many2one('account.account', string="Accrued Operator Wages")
+    cl_rice_machine_cost_account_id = fields.Many2one('account.account', string="Machine Running Cost")
+    cl_rice_operator_wage_account_id = fields.Many2one('account.account', string="Operator Wages")
+    cl_rice_repair_account_id = fields.Many2one('account.account', string="Spare Parts and Repairs")
+    cl_rice_bags_account_id = fields.Many2one('account.account', string="Bags and Twine")
+    cl_rice_transport_account_id = fields.Many2one('account.account', string="Staff Field Transport")
+    cl_rice_airtime_account_id = fields.Many2one('account.account', string="Airtime and Communication")
+    cl_rice_office_account_id = fields.Many2one('account.account', string="Office and Warehouse Costs")
+    cl_rice_post_expenses = fields.Boolean(
+        string="Post Company-Paid Expenses", default=True,
+        help="Company-paid expenses are posted when approved, so they reach the accounts and the cash book.")
+
     # Journals
+    cl_rice_cost_journal_id = fields.Many2one('account.journal', string="Machine and Field Costs Journal")
     cl_rice_charge_journal_id = fields.Many2one('account.journal', string="Farmer Charges Journal")
     cl_rice_walkin_journal_id = fields.Many2one('account.journal', string="Walk-in Milling Journal")
     cl_rice_loan_journal_id = fields.Many2one('account.journal', string="Farmer Accounts Journal")
@@ -229,6 +270,31 @@ class ResCompany(models.Model):
         if vals:
             self.sudo().write(vals)
         self._cl_rice_setup_product_accounts()
+        self._cl_rice_setup_expense_products()
+
+    def _cl_rice_setup_documents(self):
+        """Choose a document layout, so printing does not first open the layout configurator."""
+        layout = self.env.ref('web.external_layout_standard', raise_if_not_found=False)
+        for company in self.filtered(lambda c: not c.external_report_layout_id):
+            if layout:
+                company.sudo().external_report_layout_id = layout
+
+    @api.model
+    def _cl_rice_enable_analytic(self):
+        """Turn Analytic Accounting on for every internal user, as the accounting setting does."""
+        group = self.env.ref('analytic.group_analytic_accounting')
+        employees = self.env.ref('base.group_user')
+        if group not in employees.implied_ids:
+            employees.sudo().write({'implied_ids': [(4, group.id)]})
+
+    def _cl_rice_setup_expense_products(self):
+        """Expense products (diesel, repairs, wages...) point at the rice mill cost accounts."""
+        self.ensure_one()
+        for xml_id, account_field in EXPENSE_PRODUCTS:
+            product = self.env.ref(f'cl_rice_mill.{xml_id}', raise_if_not_found=False)
+            template = product and product.product_tmpl_id.with_company(self).sudo()
+            if template and self[account_field] and not template.property_account_expense_id:
+                template.property_account_expense_id = self[account_field]
 
     def _cl_rice_setup_product_accounts(self):
         """Bran, husk and broken rice are sold by the mill to the by-products income account."""

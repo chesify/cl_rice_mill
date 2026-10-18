@@ -64,6 +64,7 @@
         <field name="comment">Loans, charges, sales, settlements and all financial reports.</field>
         <field name="implied_ids" eval="[
             (4, ref('cl_rice_mill_group_user')),
+            (4, ref('analytic.group_analytic_accounting')),
             (4, ref('account.group_account_invoice')),
             (4, ref('sales_team.group_sale_salesman')),
             (4, ref('stock.group_stock_user')),

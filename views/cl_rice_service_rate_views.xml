@@ -10,6 +10,7 @@
                 <field name="currency_id" column_invisible="1"/>
                 <field name="price_farmer"/>
                 <field name="price_walkin"/>
+                <field name="operator_rate" optional="show"/>
                 <field name="date_from"/>
                 <field name="date_to"/>
                 <field name="company_id" groups="base.group_multi_company" optional="hide"/>

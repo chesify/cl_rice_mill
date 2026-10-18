@@ -46,6 +46,9 @@ class ClRiceServiceRate(models.Model):
     uom = fields.Selection(SERVICE_UNITS, string="Unit", required=True, tracking=True)
     price_farmer = fields.Monetary(string="Farmer Price", required=True, tracking=True)
     price_walkin = fields.Monetary(string="Walk-in Price", tracking=True, help="Leave empty to use the farmer price.")
+    operator_rate = fields.Monetary(
+        string="Operator Pay per Unit", tracking=True,
+        help="What the mill pays the operator per acre / hour / trip: it is a cost of the machine.")
     date_from = fields.Date(string="Valid From", required=True, default=fields.Date.context_today, tracking=True)
     date_to = fields.Date(string="Valid To", tracking=True)
     company_id = fields.Many2one('res.company', required=True, default=lambda self: self.env.company, index=True)

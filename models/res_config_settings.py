@@ -47,6 +47,18 @@ class ResConfigSettings(models.TransientModel):
     cl_rice_settlement_journal_id = fields.Many2one(
         related='company_id.cl_rice_settlement_journal_id', readonly=False)
 
+    cl_rice_fuel_price = fields.Monetary(related='company_id.cl_rice_fuel_price', readonly=False)
+    cl_rice_post_expenses = fields.Boolean(related='company_id.cl_rice_post_expenses', readonly=False)
+    cl_rice_fuel_clearing_account_id = fields.Many2one(
+        related='company_id.cl_rice_fuel_clearing_account_id', readonly=False)
+    cl_rice_machine_cost_account_id = fields.Many2one(
+        related='company_id.cl_rice_machine_cost_account_id', readonly=False)
+    cl_rice_operator_wage_account_id = fields.Many2one(
+        related='company_id.cl_rice_operator_wage_account_id', readonly=False)
+    cl_rice_operator_accrual_account_id = fields.Many2one(
+        related='company_id.cl_rice_operator_accrual_account_id', readonly=False)
+    cl_rice_cost_journal_id = fields.Many2one(related='company_id.cl_rice_cost_journal_id', readonly=False)
+
     def action_cl_rice_open_setup(self):
         self.ensure_one()
         return self.env['ir.actions.act_window']._for_xml_id('cl_rice_mill.cl_rice_setup_action')

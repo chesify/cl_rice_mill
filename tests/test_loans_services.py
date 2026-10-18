@@ -114,7 +114,7 @@ class TestServiceJobs(ClRiceCommon):
         self.assertEqual(job.amount, 200_000)
 
     def test_service_charge_invoice(self):
-        job = self._job(fuel_litres=20, fuel_cost=60_000)
+        job = self._job(fuel_litres=20)
         job.action_done()
         with self.assertRaises(AccessError):
             job.with_user(self.user_officer).action_charge()
@@ -130,7 +130,8 @@ class TestServiceJobs(ClRiceCommon):
         machine_account = self.tractor.cl_analytic_account_id
         self.assertTrue(machine_account)
         expected_key = ",".join(str(i) for i in (
-            self.fs.analytic_account_id | self.env.ref('cl_rice_mill.analytic_service_tractor') | machine_account
+            self.fs.analytic_account_id | self.season.project_id.account_id
+            | self.env.ref('cl_rice_mill.analytic_service_tractor') | machine_account
         ).ids)
         self.assertEqual(line.analytic_distribution, {expected_key: 100.0})
         receivable = invoice.line_ids.filtered(lambda l: l.account_id.account_type == 'asset_receivable')
@@ -160,7 +161,8 @@ class TestServiceJobs(ClRiceCommon):
         self.assertEqual(self.fs.balance_owed, 360_000)
 
     def test_free_service_keeps_cost(self):
-        job = self._job(is_free=True, fuel_cost=30_000, operator_cost=10_000)
+        self.company.cl_rice_fuel_price = 3_000
+        job = self._job(is_free=True, fuel_litres=10, operator_cost=10_000)
         self.assertEqual(job.amount, 0)
         job.action_done()
         job.action_charge()

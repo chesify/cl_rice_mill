@@ -116,6 +116,9 @@
         fillSelect(form.elements.service_type, data.services, false);
         fillSelect(form.elements.vehicle_id, data.machines, true);
         fillSelect(form.elements.operator_id, data.operators, true);
+        const trip = document.getElementById("o_cl_rice_field_trip");
+        fillSelect(trip.elements.vehicle_id, data.vehicles || [], false);
+        fillSelect(trip.elements.farmer_season_id, data.farmer_seasons, true);
     }
 
     async function renderOutbox() {
@@ -199,6 +202,16 @@
         await saveRecord("farmer", values, `New farmer ${values.name}`);
         form.reset();
         document.getElementById("o_cl_rice_field_gps_status").textContent = "";
+    }
+
+    async function onTripSubmit(event) {
+        event.preventDefault();
+        const form = event.target;
+        const values = Object.fromEntries(new FormData(form).entries());
+        const vehicle = form.elements.vehicle_id.selectedOptions[0];
+        await saveRecord("trip", values, `Trip ${vehicle ? vehicle.textContent : ""} - ${values.purpose}`);
+        form.reset();
+        form.elements.date.valueAsDate = new Date();
     }
 
     function onGps() {
@@ -297,6 +310,9 @@
         serviceForm.elements.date.valueAsDate = new Date();
         serviceForm.onsubmit = onServiceSubmit;
         document.getElementById("o_cl_rice_field_farmer").onsubmit = onFarmerSubmit;
+        const tripForm = document.getElementById("o_cl_rice_field_trip");
+        tripForm.elements.date.valueAsDate = new Date();
+        tripForm.onsubmit = onTripSubmit;
         document.getElementById("o_cl_rice_field_gps").onclick = onGps;
         document.getElementById("o_cl_rice_field_sync").onclick = sync;
         window.addEventListener("online", () => {
