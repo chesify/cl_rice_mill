@@ -34,3 +34,5 @@ from . import cl_rice_walkin_collection
 from . import sale_order
 from . import res_users
 from . import cl_rice_trip
+from . import res_users_settings
+from . import cl_rice_dashboard

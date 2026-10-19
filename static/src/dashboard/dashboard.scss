@@ -1,0 +1,196 @@
+.o_cl_rice_dashboard {
+    --o-cl-rice__card-radius: 0.75rem;
+
+    background-color: $o-webclient-background-color;
+
+    .o_cl_rice_filters {
+        background-color: $o-view-background-color;
+        border-bottom: 1px solid $border-color;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    }
+
+    .o_cl_rice_filter {
+        min-width: 9rem;
+    }
+
+    .o_cl_rice_kpis {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+        gap: 0.75rem;
+    }
+
+    .o_cl_rice_kpi,
+    .o_cl_rice_card {
+        position: relative;
+        padding: 0.9rem 1rem;
+        border: 1px solid $border-color;
+        border-radius: var(--o-cl-rice__card-radius);
+        background-color: $o-view-background-color;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .o_cl_rice_kpi {
+        border-left-width: 4px;
+        cursor: pointer;
+        transition: transform 0.12s ease, box-shadow 0.12s ease;
+
+        &:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+    }
+
+    .o_cl_rice_band_red {
+        border-left-color: $danger;
+    }
+
+    .o_cl_rice_band_amber {
+        border-left-color: $warning;
+    }
+
+    .o_cl_rice_band_green {
+        border-left-color: $success;
+    }
+
+    .o_cl_rice_band_none {
+        border-left-color: $primary;
+    }
+
+    .o_cl_rice_kpi_label {
+        color: $text-muted;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+
+    .o_cl_rice_kpi_value {
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+
+    .o_cl_rice_spark {
+        height: 32px;
+        margin-top: 0.25rem;
+    }
+
+    .o_cl_rice_grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
+        gap: 0.75rem;
+    }
+
+    .o_cl_rice_card_wide {
+        grid-column: span 2;
+    }
+
+    .o_cl_rice_card_full {
+        grid-column: 1 / -1;
+    }
+
+    .o_cl_rice_card h6 {
+        font-weight: 600;
+    }
+
+    .o_cl_rice_section_title {
+        font-weight: 600;
+    }
+
+    .o_cl_rice_tile {
+        padding: 0.5rem;
+        border: 1px solid $border-color;
+        border-radius: 0.5rem;
+        cursor: pointer;
+
+        &:hover {
+            background-color: rgba($primary, 0.06);
+        }
+    }
+
+    .o_cl_rice_alert {
+        border-left: 4px solid transparent;
+        background-color: $o-view-background-color;
+
+        .badge {
+            color: $white;
+        }
+    }
+
+    .o_cl_rice_alert_red {
+        border-left-color: $danger;
+
+        .badge {
+            background-color: $danger;
+        }
+    }
+
+    .o_cl_rice_alert_amber {
+        border-left-color: $warning;
+
+        .badge {
+            background-color: $warning;
+        }
+    }
+
+    .o_cl_rice_alert_ok {
+        padding: 0.5rem 0.75rem;
+        border-left: 4px solid $success;
+        border-radius: 0.5rem;
+        background-color: $o-view-background-color;
+        color: $success;
+    }
+
+    tr[role="button"] {
+        cursor: pointer;
+    }
+
+    .o_cl_rice_skeleton_line,
+    .o_cl_rice_skeleton_block {
+        border-radius: 0.4rem;
+        background: linear-gradient(90deg, rgba(128, 128, 128, 0.12) 25%,
+            rgba(128, 128, 128, 0.22) 50%, rgba(128, 128, 128, 0.12) 75%);
+        background-size: 200% 100%;
+        animation: o_cl_rice_shimmer 1.2s infinite;
+    }
+
+    .o_cl_rice_skeleton_line {
+        height: 0.9rem;
+        margin-bottom: 0.6rem;
+    }
+
+    .o_cl_rice_skeleton_block {
+        height: 4rem;
+    }
+}
+
+@keyframes o_cl_rice_shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+@include media-breakpoint-down(md) {
+    .o_cl_rice_dashboard .o_cl_rice_card_wide {
+        grid-column: auto;
+    }
+}
+
+@media print {
+    .o_cl_rice_dashboard {
+        overflow: visible !important;
+        height: auto !important;
+
+        .o_cl_rice_card,
+        .o_cl_rice_kpi {
+            break-inside: avoid;
+            box-shadow: none;
+        }
+    }
+
+    .o_main_navbar,
+    .o_control_panel {
+        display: none !important;
+    }
+}

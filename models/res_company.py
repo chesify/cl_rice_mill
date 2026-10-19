@@ -129,6 +129,12 @@ class ResCompany(models.Model):
     cl_rice_transport_account_id = fields.Many2one('account.account', string="Staff Field Transport")
     cl_rice_airtime_account_id = fields.Many2one('account.account', string="Airtime and Communication")
     cl_rice_office_account_id = fields.Many2one('account.account', string="Office and Warehouse Costs")
+    cl_rice_mill_hours_per_day = fields.Float(
+        string="Mill Working Hours per Day", default=10.0,
+        help="Hours a mill can work per day (Monday to Saturday): the dashboard measures its utilisation against it.")
+    cl_rice_dashboard_lot_age_days = fields.Integer(
+        string="Old Lot Alert (days)", default=90,
+        help="The dashboard warns about lots kept in store longer than this.")
     cl_rice_post_expenses = fields.Boolean(
         string="Post Company-Paid Expenses", default=True,
         help="Company-paid expenses are posted when approved, so they reach the accounts and the cash book.")

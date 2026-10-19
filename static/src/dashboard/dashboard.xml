@@ -1,0 +1,539 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="cl_rice_mill.ChartCard">
+        <div class="o_cl_rice_chart position-relative" t-attf-style="height: {{ this.props.height }}px;">
+            <canvas t-ref="this.chart.ref"/>
+        </div>
+    </t>
+
+    <t t-name="cl_rice_mill.Sparkline">
+        <div class="o_cl_rice_spark">
+            <canvas t-ref="this.chart.ref"/>
+        </div>
+    </t>
+
+    <t t-name="cl_rice_mill.Skeleton">
+        <div class="o_cl_rice_skeleton">
+            <div class="o_cl_rice_skeleton_line w-50"/>
+            <div class="o_cl_rice_skeleton_block"/>
+        </div>
+    </t>
+
+    <t t-name="cl_rice_mill.Empty">
+        <div class="o_cl_rice_empty text-muted text-center py-4">
+            <i class="fa fa-inbox fa-2x d-block mb-2 opacity-50"/>
+            <span>Nothing for these filters yet.</span>
+        </div>
+    </t>
+
+    <t t-name="cl_rice_mill.Dashboard">
+        <div class="o_action o_cl_rice_dashboard h-100 overflow-auto">
+            <t t-if="this.state.meta">
+                <!-- ===================================================== filters -->
+                <div class="o_cl_rice_filters sticky-top d-print-none">
+                    <div class="d-flex flex-wrap align-items-end gap-2 p-2">
+                        <div class="o_cl_rice_filter">
+                            <label class="form-label small mb-0">Season</label>
+                            <select class="form-select form-select-sm"
+                                    t-on-change="(ev) => this.setFilter('season_id', ev.target.value)">
+                                <t t-foreach="this.state.meta.seasons" t-as="season" t-key="season.id">
+                                    <option t-att-value="season.id" t-att-selected="season.id === this.state.filters.season_id" t-out="season.name"/>
+                                </t>
+                            </select>
+                        </div>
+                        <div class="o_cl_rice_filter">
+                            <label class="form-label small mb-0">Period</label>
+                            <select class="form-select form-select-sm" t-on-change="(ev) => this.applyPreset(ev.target.value)">
+                                <option value="season" t-att-selected="this.state.preset === 'season'">Season to date</option>
+                                <option value="this_month" t-att-selected="this.state.preset === 'this_month'">This month</option>
+                                <option value="last_month" t-att-selected="this.state.preset === 'last_month'">Last month</option>
+                                <option value="this_quarter" t-att-selected="this.state.preset === 'this_quarter'">This quarter</option>
+                                <option value="custom" t-att-selected="this.state.preset === 'custom'">Custom</option>
+                            </select>
+                        </div>
+                        <t t-if="this.state.preset === 'custom'">
+                            <div class="o_cl_rice_filter">
+                                <label class="form-label small mb-0">From</label>
+                                <input type="date" class="form-control form-control-sm" t-att-value="this.state.filters.date_from"
+                                       t-on-change="(ev) => this.setFilter('date_from', ev.target.value)"/>
+                            </div>
+                            <div class="o_cl_rice_filter">
+                                <label class="form-label small mb-0">To</label>
+                                <input type="date" class="form-control form-control-sm" t-att-value="this.state.filters.date_to"
+                                       t-on-change="(ev) => this.setFilter('date_to', ev.target.value)"/>
+                            </div>
+                        </t>
+                        <div class="o_cl_rice_filter" t-if="this.state.meta.officers.length">
+                            <label class="form-label small mb-0">Field officer</label>
+                            <select class="form-select form-select-sm"
+                                    t-on-change="(ev) => this.setFilter('field_officer_id', ev.target.value)">
+                                <option value="">All</option>
+                                <t t-foreach="this.state.meta.officers" t-as="officer" t-key="officer.id">
+                                    <option t-att-value="officer.id" t-att-selected="officer.id === this.state.filters.field_officer_id" t-out="officer.name"/>
+                                </t>
+                            </select>
+                        </div>
+                        <div class="o_cl_rice_filter" t-if="this.state.meta.groups.length">
+                            <label class="form-label small mb-0">Farmer group</label>
+                            <select class="form-select form-select-sm"
+                                    t-on-change="(ev) => this.setFilter('farmer_group_id', ev.target.value)">
+                                <option value="">All</option>
+                                <t t-foreach="this.state.meta.groups" t-as="group" t-key="group.id">
+                                    <option t-att-value="group.id" t-att-selected="group.id === this.state.filters.farmer_group_id" t-out="group.name"/>
+                                </t>
+                            </select>
+                        </div>
+                        <div class="o_cl_rice_filter">
+                            <label class="form-label small mb-0">Village / ward</label>
+                            <select class="form-select form-select-sm" t-on-change="(ev) => this.setFilter('village', ev.target.value)">
+                                <option value="">All</option>
+                                <t t-foreach="this.state.meta.villages" t-as="village" t-key="village">
+                                    <option t-att-value="village" t-att-selected="village === this.state.filters.village" t-out="village"/>
+                                </t>
+                            </select>
+                        </div>
+                        <div class="o_cl_rice_filter">
+                            <label class="form-label small mb-0">Machine</label>
+                            <select class="form-select form-select-sm" t-on-change="(ev) => this.setFilter('vehicle_id', ev.target.value)">
+                                <option value="">All</option>
+                                <t t-foreach="this.state.meta.machines" t-as="machine" t-key="machine.id">
+                                    <option t-att-value="machine.id" t-att-selected="machine.id === this.state.filters.vehicle_id" t-out="machine.name"/>
+                                </t>
+                            </select>
+                        </div>
+                        <div class="o_cl_rice_filter">
+                            <label class="form-label small mb-0">Service</label>
+                            <select class="form-select form-select-sm" t-on-change="(ev) => this.setFilter('service_type', ev.target.value)">
+                                <option value="">All</option>
+                                <t t-foreach="this.state.meta.service_types" t-as="service" t-key="service.id">
+                                    <option t-att-value="service.id" t-att-selected="service.id === this.state.filters.service_type" t-out="service.name"/>
+                                </t>
+                            </select>
+                        </div>
+                        <div class="form-check form-switch ms-1 mb-1">
+                            <input class="form-check-input" type="checkbox" id="o_cl_rice_compare"
+                                   t-att-checked="this.state.filters.compare"
+                                   t-on-change="(ev) => this.setFilter('compare', ev.target.checked)"/>
+                            <label class="form-check-label small" for="o_cl_rice_compare">Compare with previous season</label>
+                        </div>
+                        <div class="ms-auto d-flex align-items-center gap-2">
+                            <span class="small text-muted" t-if="this.state.updated">Updated <t t-out="this.state.updated"/> UTC</span>
+                            <button class="btn btn-sm btn-light" t-on-click="() => this.resetFilters()" title="Reset filters">
+                                <i class="fa fa-undo"/> Reset
+                            </button>
+                            <button class="btn btn-sm btn-light" t-on-click="() => this.refresh()" title="Refresh">
+                                <i class="fa fa-refresh"/>
+                            </button>
+                            <button class="btn btn-sm btn-light" t-on-click="() => this.printBoard()" title="Print or save as PDF">
+                                <i class="fa fa-print"/>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="o_cl_rice_board container-fluid py-3">
+                    <!-- ================================================= alerts -->
+                    <t t-if="this.hasSection('alerts')">
+                        <div class="o_cl_rice_alerts mb-3">
+                            <t t-if="this.isLoading('alerts')"><t t-call="cl_rice_mill.Skeleton"/></t>
+                            <t t-elif="this.data('alerts').alerts and this.data('alerts').alerts.length">
+                                <div class="d-flex flex-wrap gap-2">
+                                    <t t-foreach="this.data('alerts').alerts" t-as="alert" t-key="alert_index">
+                                        <button t-attf-class="o_cl_rice_alert o_cl_rice_alert_{{ alert.level }} btn btn-sm text-start"
+                                                t-on-click="() => this.open(alert.action)">
+                                            <span class="badge rounded-pill me-1" t-out="alert.count"/>
+                                            <span t-out="alert.title"/>
+                                            <small t-if="alert.detail" class="d-block opacity-75" t-out="alert.detail"/>
+                                        </button>
+                                    </t>
+                                </div>
+                            </t>
+                            <div t-else="" class="o_cl_rice_alert o_cl_rice_alert_ok small">
+                                <i class="fa fa-check-circle me-1"/> No alerts: everything is under control.
+                            </div>
+                        </div>
+                    </t>
+
+                    <!-- ================================================= KPI strip -->
+                    <t t-if="this.hasSection('kpi')">
+                        <div class="o_cl_rice_kpis mb-3">
+                            <t t-if="this.isLoading('kpi')">
+                                <t t-foreach="[1, 2, 3, 4, 5, 6]" t-as="skeleton" t-key="skeleton">
+                                    <div class="o_cl_rice_kpi"><t t-call="cl_rice_mill.Skeleton"/></div>
+                                </t>
+                            </t>
+                            <t t-else="">
+                                <t t-foreach="this.data('kpi').kpis or []" t-as="kpi" t-key="kpi.key">
+                                    <div t-attf-class="o_cl_rice_kpi o_cl_rice_band_{{ kpi.band or 'none' }}" role="button"
+                                         t-on-click="() => this.open(kpi.action)">
+                                        <div class="o_cl_rice_kpi_label" t-out="kpi.label"/>
+                                        <div class="d-flex align-items-baseline gap-2">
+                                            <div class="o_cl_rice_kpi_value" t-out="this.kpiValue(kpi)"/>
+                                            <small t-if="kpi.trend !== null and kpi.trend !== undefined" t-att-class="this.trendClass(kpi)">
+                                                <t t-if="kpi.trend >= 0">▲</t><t t-else="">▼</t>
+                                                <t t-out="this.trendText(kpi)"/>
+                                            </small>
+                                        </div>
+                                        <div class="o_cl_rice_kpi_sub small text-muted" t-if="kpi.sub" t-out="kpi.sub"/>
+                                        <Sparkline t-if="kpi.spark.length" values="kpi.spark"/>
+                                    </div>
+                                </t>
+                            </t>
+                        </div>
+                    </t>
+
+                    <!-- ================================================= sections -->
+                    <t t-foreach="this.chartSections()" t-as="section" t-key="section">
+                        <h4 class="o_cl_rice_section_title mt-4 mb-2" t-out="this.sectionTitles[section]"/>
+                        <t t-if="this.isLoading(section)">
+                            <div class="o_cl_rice_grid">
+                                <div class="o_cl_rice_card"><t t-call="cl_rice_mill.Skeleton"/></div>
+                                <div class="o_cl_rice_card"><t t-call="cl_rice_mill.Skeleton"/></div>
+                            </div>
+                        </t>
+                        <div t-elif="this.data(section).error" class="alert alert-warning">This section could not be loaded.</div>
+                        <t t-else="" t-call="{{ 'cl_rice_mill.Dashboard.' + section }}"/>
+                    </t>
+                </div>
+            </t>
+            <div t-else="" class="p-4"><t t-call="cl_rice_mill.Skeleton"/></div>
+        </div>
+    </t>
+
+    <!-- ======================================================================= A -->
+    <t t-name="cl_rice_mill.Dashboard.income">
+        <t t-set="income" t-value="this.data('income')"/>
+        <div class="o_cl_rice_grid">
+            <div class="o_cl_rice_card o_cl_rice_card_wide">
+                <h6>Income by service line</h6>
+                <t t-if="income.income_by_line.datasets.length">
+                    <ChartCard config="this.incomeByLineConfig()" onPoint="(i, d) => this.onIncomePoint(i, d)"/>
+                </t>
+                <t t-else="" t-call="cl_rice_mill.Empty"/>
+            </div>
+            <div class="o_cl_rice_card">
+                <h6>Costs by category</h6>
+                <t t-if="income.costs.data.length">
+                    <ChartCard config="this.costsConfig()" onPoint="(i) => this.onCostPoint(i)"/>
+                </t>
+                <t t-else="" t-call="cl_rice_mill.Empty"/>
+            </div>
+            <div class="o_cl_rice_card">
+                <h6>Season P&amp;L <small class="text-muted">income, costs, net profit</small></h6>
+                <ChartCard config="this.waterfallConfig()"/>
+            </div>
+            <div class="o_cl_rice_card o_cl_rice_card_wide">
+                <h6>Profit per month</h6>
+                <t t-if="income.profit_trend.data.length">
+                    <ChartCard config="this.profitTrendConfig()"/>
+                </t>
+                <t t-else="" t-call="cl_rice_mill.Empty"/>
+            </div>
+        </div>
+    </t>
+
+    <!-- ======================================================================= B -->
+    <t t-name="cl_rice_mill.Dashboard.farmers">
+        <t t-set="farmers" t-value="this.data('farmers')"/>
+        <div class="o_cl_rice_grid">
+            <div class="o_cl_rice_card o_cl_rice_card_wide">
+                <div class="d-flex justify-content-between">
+                    <h6>Top 10 farmers by amount owed</h6>
+                    <button class="btn btn-link btn-sm p-0 d-print-none" t-on-click="() => this.exportTopOwed()" t-if="farmers.top_owed.length">
+                        <i class="fa fa-file-excel-o"/> XLSX
+                    </button>
+                </div>
+                <t t-if="farmers.top_owed.length">
+                    <ChartCard config="this.topOwedConfig()" onPoint="(i) => this.open(farmers.top_owed[i].action)"/>
+                    <table class="table table-sm small mt-2 mb-0">
+                        <thead><tr><th>Farmer</th><th class="text-end">Owed</th><th class="text-end">Collateral cover</th></tr></thead>
+                        <tbody>
+                            <tr t-foreach="farmers.top_owed" t-as="row" t-key="row.id" role="button" t-on-click="() => this.open(row.action)">
+                                <td t-out="row.name"/>
+                                <td class="text-end" t-out="this.money(row.owed, false)"/>
+                                <td t-attf-class="text-end {{ row.cover &lt; 120 ? 'text-danger' : row.cover &lt;= 200 ? 'text-warning' : 'text-success' }}"
+                                    t-out="this.number(row.cover, 1) + '%'"/>
+                            </tr>
+                        </tbody>
+                    </table>
+                </t>
+                <t t-else="" t-call="cl_rice_mill.Empty"/>
+            </div>
+            <div class="o_cl_rice_card">
+                <h6>Ageing of farmer balances</h6>
+                <ChartCard config="this.simpleBarConfig(farmers.ageing, 'Owed', 3)" onPoint="(i) => this.open(farmers.ageing[i].action)"/>
+            </div>
+            <div class="o_cl_rice_card">
+                <h6>Credit exposure against the limit</h6>
+                <div class="d-flex gap-3 mb-2">
+                    <div class="o_cl_rice_stat text-danger"><b t-out="farmers.over_count"/> over the limit</div>
+                    <div class="o_cl_rice_stat text-warning"><b t-out="farmers.near_count"/> above 80%</div>
+                </div>
+                <table class="table table-sm small mb-0" t-if="farmers.over_limit.length or farmers.near_limit.length">
+                    <thead><tr><th>Farmer</th><th class="text-end">Exposure</th><th class="text-end">Limit</th><th class="text-end">Use</th></tr></thead>
+                    <tbody>
+                        <tr t-foreach="farmers.over_limit.concat(farmers.near_limit)" t-as="row" t-key="row.id">
+                            <td t-out="row.name"/>
+                            <td class="text-end" t-out="this.money(row.exposure)"/>
+                            <td class="text-end" t-out="this.money(row.limit)"/>
+                            <td t-attf-class="text-end {{ row.usage &gt; 100 ? 'text-danger' : 'text-warning' }}" t-out="this.number(row.usage, 0) + '%'"/>
+                        </tr>
+                    </tbody>
+                </table>
+                <div t-else="" class="o_cl_rice_empty text-muted text-center py-4"><i class="fa fa-check-circle fa-2x d-block mb-2 opacity-50"/>Every farmer is within the limit.</div>
+            </div>
+            <div class="o_cl_rice_card">
+                <h6>Loan recovery</h6>
+                <ChartCard config="this.simpleBarConfig(farmers.funnel, 'Amount', 0, true)" onPoint="(i) => this.open(farmers.funnel[i].action)"/>
+            </div>
+            <div class="o_cl_rice_card">
+                <h6>Farmers by season stage</h6>
+                <ChartCard config="this.simpleBarConfig(farmers.pipeline, 'Farmers', 4)" onPoint="(i) => this.open(farmers.pipeline[i].action)"/>
+            </div>
+        </div>
+    </t>
+
+    <!-- ======================================================================= C -->
+    <t t-name="cl_rice_mill.Dashboard.stock">
+        <t t-set="stock" t-value="this.data('stock')"/>
+        <div class="o_cl_rice_grid">
+            <div class="o_cl_rice_card">
+                <h6>Stock by partition and owner (kg)</h6>
+                <ChartCard config="this.partitionConfig()" onPoint="(i) => this.open(stock.partitions.actions[i])"/>
+            </div>
+            <div class="o_cl_rice_card o_cl_rice_card_wide">
+                <h6>Intake and releases per week</h6>
+                <t t-if="stock.flows.labels.length">
+                    <ChartCard config="this.flowsConfig()" onPoint="(i, d) => this.onFlowPoint(i, d)"/>
+                </t>
+                <t t-else="" t-call="cl_rice_mill.Empty"/>
+            </div>
+            <div class="o_cl_rice_card">
+                <h6>Ready to release <small class="text-muted">stock held, nothing owed (<t t-out="stock.ready_count"/>)</small></h6>
+                <table class="table table-sm small mb-0" t-if="stock.ready.length">
+                    <tbody>
+                        <tr t-foreach="stock.ready" t-as="row" t-key="row.id" role="button" t-on-click="() => this.open(row.action)">
+                            <td t-out="row.name"/><td class="text-end" t-out="this.number(row.kg) + ' kg'"/>
+                        </tr>
+                    </tbody>
+                </table>
+                <t t-else="" t-call="cl_rice_mill.Empty"/>
+            </div>
+            <div class="o_cl_rice_card">
+                <div class="d-flex justify-content-between">
+                    <h6>Oldest lots in store</h6>
+                    <button class="btn btn-link btn-sm p-0 d-print-none" t-on-click="() => this.exportLots()" t-if="stock.oldest_lots.length">
+                        <i class="fa fa-file-excel-o"/> XLSX
+                    </button>
+                </div>
+                <div class="small text-muted mb-1">Storage fees charged this month: <b t-out="this.money(stock.storage_fees_month, false)"/></div>
+                <table class="table table-sm small mb-0" t-if="stock.oldest_lots.length">
+                    <thead><tr><th>Lot</th><th>Owner</th><th class="text-end">Kg</th><th class="text-end">Days</th></tr></thead>
+                    <tbody>
+                        <tr t-foreach="stock.oldest_lots" t-as="row" t-key="row.lot" role="button" t-on-click="() => this.open(row.action)">
+                            <td t-out="row.lot"/><td t-out="row.owner"/>
+                            <td class="text-end" t-out="this.number(row.kg)"/><td class="text-end" t-out="row.days"/>
+                        </tr>
+                    </tbody>
+                </table>
+                <t t-else="" t-call="cl_rice_mill.Empty"/>
+            </div>
+            <div class="o_cl_rice_card">
+                <h6>Bran and husk</h6>
+                <table class="table table-sm small mb-0">
+                    <thead><tr><th/><th class="text-end">In stock</th><th class="text-end">Value</th><th class="text-end">Sold</th></tr></thead>
+                    <tbody>
+                        <tr t-foreach="stock.byproducts" t-as="row" t-key="row.label" role="button" t-on-click="() => this.open(row.action)">
+                            <td t-out="row.label"/>
+                            <td class="text-end" t-out="this.number(row.kg) + ' kg'"/>
+                            <td class="text-end" t-out="this.money(row.value)"/>
+                            <td class="text-end" t-out="this.money(row.sales)"/>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </t>
+
+    <!-- ======================================================================= D -->
+    <t t-name="cl_rice_mill.Dashboard.milling">
+        <t t-set="milling" t-value="this.data('milling')"/>
+        <div class="o_cl_rice_grid">
+            <div class="o_cl_rice_card o_cl_rice_card_wide">
+                <h6>Paddy milled per week and mill (kg)</h6>
+                <t t-if="milling.volume.labels.length">
+                    <ChartCard config="this.millingVolumeConfig()"/>
+                </t>
+                <t t-else="" t-call="cl_rice_mill.Empty"/>
+            </div>
+            <div class="o_cl_rice_card">
+                <h6>Recovery trend (%)</h6>
+                <t t-if="milling.recovery_trend.labels.length">
+                    <ChartCard config="this.recoveryTrendConfig()"/>
+                </t>
+                <t t-else="" t-call="cl_rice_mill.Empty"/>
+            </div>
+            <div class="o_cl_rice_card">
+                <h6>Recovery per mill and per grade</h6>
+                <table class="table table-sm small mb-2">
+                    <thead><tr><th>Mill</th><th class="text-end">Paddy</th><th class="text-end">Recovery</th></tr></thead>
+                    <tbody>
+                        <tr t-foreach="milling.recovery_machine" t-as="row" t-key="row_index" role="button" t-on-click="() => this.open(row.action)">
+                            <td t-out="row.label"/><td class="text-end" t-out="this.short(row.kg) + ' kg'"/>
+                            <td class="text-end" t-out="this.number(row.recovery, 1) + '%'"/>
+                        </tr>
+                    </tbody>
+                </table>
+                <table class="table table-sm small mb-0">
+                    <thead><tr><th>Grade</th><th class="text-end">Paddy</th><th class="text-end">Recovery</th></tr></thead>
+                    <tbody>
+                        <tr t-foreach="milling.recovery_grade" t-as="row" t-key="row_index">
+                            <td t-out="row.label"/><td class="text-end" t-out="this.short(row.kg) + ' kg'"/>
+                            <td class="text-end" t-out="this.number(row.recovery, 1) + '%'"/>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="o_cl_rice_card">
+                <h6>Farmers and walk-in customers</h6>
+                <div class="row g-2 text-center">
+                    <div class="col-6" t-foreach="milling.modes" t-as="mode" t-key="mode_index">
+                        <div class="o_cl_rice_tile" role="button" t-on-click="() => this.open(mode.action)">
+                            <div class="small text-muted" t-out="mode.label"/>
+                            <div class="fw-bold" t-out="this.short(mode.kg) + ' kg'"/>
+                            <div class="small" t-out="this.money(mode.income)"/>
+                        </div>
+                    </div>
+                </div>
+                <h6 class="mt-3">Mill utilisation</h6>
+                <div t-foreach="milling.utilisation" t-as="mill" t-key="mill_index" class="mb-2">
+                    <div class="d-flex justify-content-between small">
+                        <span t-out="mill.label"/>
+                        <span><t t-out="this.number(mill.hours, 1)"/> / <t t-out="this.number(mill.available)"/> h</span>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar" t-att-style="this.barStyle(mill.pct)"/>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <!-- ======================================================================= E -->
+    <t t-name="cl_rice_mill.Dashboard.machines">
+        <t t-set="machines" t-value="this.data('machines')"/>
+        <div class="o_cl_rice_grid">
+            <div class="o_cl_rice_card o_cl_rice_card_full">
+                <div class="d-flex justify-content-between">
+                    <h6>Profit per machine</h6>
+                    <button class="btn btn-link btn-sm p-0 d-print-none" t-on-click="() => this.exportMachines()" t-if="machines.machines.length">
+                        <i class="fa fa-file-excel-o"/> XLSX
+                    </button>
+                </div>
+                <t t-if="machines.machines.length">
+                    <ChartCard config="this.machineProfitConfig()" onPoint="(i) => this.open(machines.machines[i].action)"/>
+                    <div class="table-responsive">
+                        <table class="table table-sm small mt-2 mb-0">
+                            <thead>
+                                <tr><th>Machine</th><th class="text-end">Income</th><th class="text-end">Fuel</th>
+                                    <th class="text-end">Repairs</th><th class="text-end">Wages</th><th class="text-end">Transport</th>
+                                    <th class="text-end">Net profit</th><th class="text-end">Work</th>
+                                    <th class="text-end">Cost / unit</th><th class="text-end">L / acre</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="machines.machines" t-as="row" t-key="row.id" role="button" t-on-click="() => this.open(row.action)">
+                                    <td t-out="row.name"/>
+                                    <td class="text-end" t-out="this.money(row.income)"/>
+                                    <td class="text-end" t-out="this.money(row.fuel)"/>
+                                    <td class="text-end" t-out="this.money(row.repairs)"/>
+                                    <td class="text-end" t-out="this.money(row.wages)"/>
+                                    <td class="text-end" t-out="this.money(row.transport)"/>
+                                    <td t-attf-class="text-end fw-bold {{ row.net &lt; 0 ? 'text-danger' : 'text-success' }}" t-out="this.money(row.net)"/>
+                                    <td class="text-end"><t t-out="this.number(row.work, 1)"/> <t t-out="row.unit"/></td>
+                                    <td class="text-end" t-out="this.money(row.cost_per_unit)"/>
+                                    <td t-attf-class="text-end {{ row.fuel_alert ? 'text-danger fw-bold' : '' }}">
+                                        <t t-if="row.litres_per_acre" t-out="this.number(row.litres_per_acre, 1)"/>
+                                        <i t-if="row.fuel_alert" class="fa fa-exclamation-triangle ms-1" title="Far above the average"/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="small text-muted mt-1">Average fuel: <t t-out="this.number(machines.average_litres_per_acre, 1)"/> litres per acre.</div>
+                </t>
+                <t t-else="" t-call="cl_rice_mill.Empty"/>
+            </div>
+            <div class="o_cl_rice_card">
+                <h6>Maintenance due</h6>
+                <table class="table table-sm small mb-0" t-if="machines.maintenance.length">
+                    <tbody>
+                        <tr t-foreach="machines.maintenance" t-as="row" t-key="row_index" role="button" t-on-click="() => this.open(row.action)">
+                            <td t-out="row.vehicle"/><td t-out="row.service"/>
+                            <td t-attf-class="text-end {{ row.overdue ? 'text-danger fw-bold' : '' }}" t-out="row.date"/>
+                        </tr>
+                    </tbody>
+                </table>
+                <div t-else="" class="o_cl_rice_empty text-muted text-center py-4"><i class="fa fa-check-circle fa-2x d-block mb-2 opacity-50"/>No service planned in the next two weeks.</div>
+            </div>
+        </div>
+    </t>
+
+    <!-- ======================================================================= F -->
+    <t t-name="cl_rice_mill.Dashboard.field">
+        <t t-set="field" t-value="this.data('field')"/>
+        <div class="o_cl_rice_grid">
+            <div class="o_cl_rice_card">
+                <div class="d-flex justify-content-between">
+                    <h6>Service jobs per field officer</h6>
+                    <button class="btn btn-link btn-sm p-0 d-print-none" t-on-click="() => this.exportOfficers()" t-if="field.per_officer.length">
+                        <i class="fa fa-file-excel-o"/> XLSX
+                    </button>
+                </div>
+                <table class="table table-sm small mb-0" t-if="field.per_officer.length">
+                    <thead><tr><th>Officer</th><th class="text-end">Jobs</th><th class="text-end">Quantity</th><th class="text-end">Income</th></tr></thead>
+                    <tbody>
+                        <tr t-foreach="field.per_officer" t-as="row" t-key="row_index" role="button" t-on-click="() => this.open(row.action)">
+                            <td t-out="row.name"/><td class="text-end" t-out="row.count"/>
+                            <td class="text-end" t-out="this.number(row.quantity, 1)"/><td class="text-end" t-out="this.money(row.income)"/>
+                        </tr>
+                    </tbody>
+                </table>
+                <t t-else="" t-call="cl_rice_mill.Empty"/>
+            </div>
+            <div class="o_cl_rice_card">
+                <h6>Field app</h6>
+                <div t-foreach="field.sync" t-as="row" t-key="row_index" class="o_cl_rice_tile d-flex justify-content-between align-items-center mb-2"
+                     role="button" t-on-click="() => this.open(row.action)">
+                    <span class="small" t-out="row.label"/>
+                    <span>
+                        <b t-out="row.value"/>
+                        <span t-if="row.old" class="badge text-bg-warning ms-1"><t t-out="row.old"/> over 2 days</span>
+                    </span>
+                </div>
+            </div>
+            <div class="o_cl_rice_card">
+                <h6>Staff trips</h6>
+                <table class="table table-sm small mb-2" t-if="field.trips_officer.length">
+                    <thead><tr><th>Officer</th><th class="text-end">Trips</th><th class="text-end">Km</th><th class="text-end">Cost</th></tr></thead>
+                    <tbody>
+                        <tr t-foreach="field.trips_officer" t-as="row" t-key="row_index">
+                            <td t-out="row.name"/><td class="text-end" t-out="row.count"/>
+                            <td class="text-end" t-out="this.number(row.km)"/><td class="text-end" t-out="this.money(row.cost)"/>
+                        </tr>
+                    </tbody>
+                </table>
+                <table class="table table-sm small mb-0" t-if="field.trips_vehicle.length">
+                    <thead><tr><th>Vehicle</th><th class="text-end">Trips</th><th class="text-end">Km</th><th class="text-end">Cost</th></tr></thead>
+                    <tbody>
+                        <tr t-foreach="field.trips_vehicle" t-as="row" t-key="row_index">
+                            <td t-out="row.name"/><td class="text-end" t-out="row.count"/>
+                            <td class="text-end" t-out="this.number(row.km)"/><td class="text-end" t-out="this.money(row.cost)"/>
+                        </tr>
+                    </tbody>
+                </table>
+                <t t-if="!field.trips_officer.length and !field.trips_vehicle.length" t-call="cl_rice_mill.Empty"/>
+            </div>
+        </div>
+    </t>
+</templates>

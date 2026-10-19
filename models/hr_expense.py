@@ -40,5 +40,10 @@ class HrExpense(models.Model):
         moves = self.filtered(
             lambda e: e.payment_mode == 'company_account' and e.company_id.cl_rice_post_expenses
         ).sudo().account_move_id.filtered(lambda m: m.state == 'draft')
+        for expense in self.filtered('cl_vehicle_id'):
+            # the machine's profit reads the vehicle of each cost line
+            expense.sudo().account_move_id.line_ids.filtered(
+                lambda l: l.expense_id == expense and l.account_id.account_type.startswith('expense')
+            ).vehicle_id = expense.cl_vehicle_id
         moves.action_post()
         return res

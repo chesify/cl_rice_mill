@@ -125,6 +125,16 @@
                             <field name="cl_rice_post_expenses"/>
                         </setting>
                     </block>
+                    <block title="Dashboard" name="cl_rice_dashboard_container">
+                        <setting id="cl_rice_mill_hours" string="Mill Working Hours"
+                                 help="Hours a mill can work per day: the dashboard shows its utilisation against it.">
+                            <field name="cl_rice_mill_hours_per_day"/>
+                        </setting>
+                        <setting id="cl_rice_lot_age" string="Old Lot Alert"
+                                 help="The dashboard warns about lots kept in store for more days than this.">
+                            <field name="cl_rice_dashboard_lot_age_days"/>
+                        </setting>
+                    </block>
                     <block title="Warehouse" name="cl_rice_stock_container">
                         <setting id="cl_rice_warehouse" string="Warehouse Partitions"
                                  help="One warehouse with three partitions; rename the partitions on the locations.">

@@ -36,6 +36,8 @@ class ResConfigSettings(models.TransientModel):
         related='company_id.cl_rice_storage_income_account_id', readonly=False)
     cl_rice_milling_income_account_id = fields.Many2one(
         related='company_id.cl_rice_milling_income_account_id', readonly=False)
+    cl_rice_mill_hours_per_day = fields.Float(related='company_id.cl_rice_mill_hours_per_day', readonly=False)
+    cl_rice_dashboard_lot_age_days = fields.Integer(related='company_id.cl_rice_dashboard_lot_age_days', readonly=False)
     cl_rice_byproduct_income_account_id = fields.Many2one(
         related='company_id.cl_rice_byproduct_income_account_id', readonly=False)
     cl_rice_other_income_account_id = fields.Many2one(

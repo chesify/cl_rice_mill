@@ -79,8 +79,15 @@ and settle with them.
         'views/hr_expense_views.xml',
         'views/cl_rice_field_app_templates.xml',
         'views/cl_rice_portal_templates.xml',
+        'views/cl_rice_dashboard_views.xml',
         'views/cl_rice_menus.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'cl_rice_mill/static/src/dashboard/**/*',
+            'cl_rice_mill/static/src/fs_panel/**/*',
+        ],
+    },
     'post_init_hook': '_cl_rice_post_init',
     'application': True,
     'installable': True,

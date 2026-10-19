@@ -141,6 +141,9 @@
                         </group>
                     </group>
                     <notebook>
+                        <page string="Overview" name="cl_rice_panel" invisible="not id">
+                            <widget name="cl_rice_fs_panel"/>
+                        </page>
                         <page string="Charges" name="charges">
                             <group>
                                 <group>

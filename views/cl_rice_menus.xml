@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <menuitem id="cl_rice_menu_root" name="Rice Mill" sequence="45"
-              web_icon="cl_rice_mill,static/description/icon.png"
+              web_icon="cl_rice_mill,static/description/icon.png" action="cl_rice_dashboard_action"
               groups="cl_rice_mill.cl_rice_mill_group_user"/>
+    <menuitem id="cl_rice_dashboard_menu" name="Dashboard" parent="cl_rice_menu_root"
+              action="cl_rice_dashboard_action" sequence="1"/>
 
     <menuitem id="cl_rice_menu_farmers" name="Farmers" parent="cl_rice_menu_root" sequence="10"/>
     <menuitem id="cl_rice_season_menu" name="Seasons" parent="cl_rice_menu_farmers"
@@ -55,6 +57,20 @@
               action="cl_rice_opening_balance_action" sequence="90" groups="cl_rice_mill.cl_rice_mill_group_manager"/>
 
     <menuitem id="cl_rice_menu_reporting" name="Reporting" parent="cl_rice_menu_root" sequence="80"/>
+    <menuitem id="cl_rice_analysis_income_menu" name="Income by Service Line" parent="cl_rice_menu_reporting"
+              action="cl_rice_analysis_income_action" sequence="20" groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
+    <menuitem id="cl_rice_analysis_machines_menu" name="Profit per Machine" parent="cl_rice_menu_reporting"
+              action="cl_rice_analysis_machines_action" sequence="25" groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
+    <menuitem id="cl_rice_analysis_ageing_menu" name="Farmer Ageing" parent="cl_rice_menu_reporting"
+              action="cl_rice_analysis_ageing_action" sequence="30" groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
+    <menuitem id="cl_rice_analysis_pnl_menu" name="Season Profit and Loss" parent="cl_rice_menu_reporting"
+              action="cl_rice_analysis_pnl_action" sequence="35" groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
+    <menuitem id="cl_rice_analysis_stock_menu" name="Stock per Farmer and Lot" parent="cl_rice_menu_reporting"
+              action="cl_rice_analysis_stock_action" sequence="40"
+              groups="cl_rice_mill.cl_rice_mill_group_warehouse,cl_rice_mill.cl_rice_mill_group_accountant"/>
+    <menuitem id="cl_rice_analysis_milling_menu" name="Milling Yield" parent="cl_rice_menu_reporting"
+              action="cl_rice_analysis_milling_action" sequence="45"
+              groups="cl_rice_mill.cl_rice_mill_group_mill_operator,cl_rice_mill.cl_rice_mill_group_accountant"/>
     <menuitem id="cl_rice_cash_book_menu" name="Cash Book" parent="cl_rice_menu_reporting"
               action="cl_rice_report_cash_book_action" sequence="10" groups="cl_rice_mill.cl_rice_mill_group_accountant"/>
 
