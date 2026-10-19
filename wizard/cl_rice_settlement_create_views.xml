@@ -15,6 +15,24 @@
                     <field name="next_season_id" invisible="settlement_type != 'final' or negative_policy != 'carry_forward'"/>
                     <field name="payout_journal_id"/>
                 </group>
+                <group string="Money Held" invisible="settlement_type != 'interim'">
+                    <group>
+                        <field name="currency_id" invisible="1"/>
+                        <field name="funds_held"/>
+                        <field name="balance_owed"/>
+                        <field name="payout_amount"/>
+                        <field name="applied_amount"/>
+                    </group>
+                    <group>
+                        <field name="kept_amount" invisible="not kept_amount"/>
+                        <field name="owed_after" decoration-danger="owed_after &gt; 0"/>
+                        <field name="cover_after" invisible="not owed_after"/>
+                    </group>
+                </group>
+                <div class="alert alert-warning" role="alert" invisible="settlement_type != 'interim' or not needs_debt_approval">
+                    The farmer still owes money after this payout: a Rice Mill Manager must approve it with a reason
+                    before it is paid.
+                </div>
                 <p class="text-muted">
                     Everything the farmer owes and everything due to the farmer for the season is listed.
                     Review the statement before confirming it.

@@ -144,7 +144,7 @@ class ClRiceStockRelease(models.Model):
                 values['clearance_basis'] = 'no_balance'
             elif release.payment_route == 'luvanda' and release.currency_id.compare_amounts(funds, balance) >= 0:
                 # the buyer's money held by the mill pays the farmer's balance first
-                values['funds_applied'] = fs.sudo()._cl_apply_funds_held()
+                values['funds_applied'] = fs.sudo()._cl_apply_funds_held()[0]
                 values['clearance_basis'] = 'funds'
             else:
                 raise UserError(self.env._(

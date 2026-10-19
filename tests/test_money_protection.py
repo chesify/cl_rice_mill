@@ -135,8 +135,105 @@ class TestMoneyProtection(ClRiceCommon):
         self._disburse(self._create_loan(self.fs, 300_000))
         sale = self._sale(self.fs, route='luvanda')
         self._receive(self.fs, 200_000, 'buyer', sale_id=sale.id)
+        # by default nothing is paid out: all the money held goes to the debt
+        settlement = self._settlement(self.fs, 'interim')
+        self.assertEqual(settlement.payout_amount, 0)
+        self.assertEqual(settlement.applied_amount, 200_000)
+        self.assertFalse(settlement.needs_debt_approval)
+        settlement.action_confirm()
+        self.assertFalse(settlement.payment_id)
+        self.fs.invalidate_recordset()
+        self.assertEqual(self.fs.balance_owed, 150_000)
+        self.assertEqual(self.fs.funds_held, 0)
         with self.assertRaisesRegex(UserError, "Nothing can be paid out"):
             self._settlement(self.fs, 'interim').action_confirm()
+
+    # ------------------------------------------------------------------
+    # N15: split of the money held between the farmer and the debt
+    # ------------------------------------------------------------------
+    def _owe_and_hold(self, held):
+        """3,660,000 owed (3,610,000 loan and the 50,000 milling fee) and ``held`` received from a buyer."""
+        self.fs.sudo().credit_limit_override = 10_000_000
+        self._disburse(self._create_loan(self.fs, 3_610_000))
+        sale = self.env['cl.rice.facilitated.sale'].create({
+            'farmer_season_id': self.fs.id, 'buyer_id': self.buyer.id, 'product_id': self.rice.id,
+            'quantity': 600, 'price_unit': 10_000, 'payment_route': 'luvanda'})
+        self._receive(self.fs, held, 'buyer', sale_id=sale.id)
+        self.fs.invalidate_recordset()
+        self.assertEqual(self.fs.balance_owed, 3_660_000)
+        self.assertEqual(self.fs.funds_held, held)
+
+    def test_partial_payout_while_owing_needs_manager(self):
+        self._owe_and_hold(2_000_000)
+        settlement = self._settlement(self.fs, 'interim', payout_amount=500_000)
+        self.assertEqual(settlement.funds_held_amount, 2_000_000)
+        self.assertEqual(settlement.applied_amount, 1_500_000)
+        self.assertEqual(settlement.owed_after, 2_160_000)
+        self.assertEqual(settlement.kept_amount, 0)
+        self.assertTrue(settlement.needs_debt_approval)
+        # 650 kg rice at 2,000 against 2,160,000 still owed
+        self.assertAlmostEqual(settlement.cover_after, 1_300_000 / 2_160_000 * 100, places=1)
+        with self.assertRaisesRegex(UserError, "Manager must approve"):
+            settlement.action_confirm()
+        with self.assertRaises(Exception):
+            settlement.with_user(self.user_accountant)._cl_payout_with_debt("no right")
+        self.env['cl.rice.reason'].with_user(self.user_manager).create({
+            'res_model': 'cl.rice.settlement', 'res_id': settlement.id, 'action': 'payout_with_debt',
+            'reason': "School fees, the rice in store covers the rest",
+        }).action_confirm()
+        self.assertEqual(settlement.debt_approval_uid, self.user_manager)
+        settlement.action_confirm()
+        self.assertEqual(settlement.state, 'paid')
+        self.assertEqual(settlement.with_user(self.env.user).payment_id.amount, 500_000)
+        self.fs.invalidate_recordset()
+        self.assertEqual(self.fs.balance_owed, 2_160_000)
+        self.assertEqual(self.fs.funds_held, 0)
+        self.assertFalse(self.fs.is_locked)
+        # both parts are on the farmer's statement
+        payouts = self.fs._cl_statement()['payouts']
+        self.assertEqual([(p['applied'], p['paid']) for p in payouts], [(1_500_000, 500_000)])
+        html = self.env['ir.actions.report']._render_qweb_html(
+            'cl_rice_mill.action_report_settlement_statement', settlement.ids)[0].decode()
+        self.assertIn("Applied to your balance", html)
+        self.assertIn("Paid to you", html)
+
+    def test_changing_the_amount_drops_the_approval(self):
+        self._owe_and_hold(2_000_000)
+        settlement = self._settlement(self.fs, 'interim', payout_amount=500_000)
+        settlement.with_user(self.user_manager)._cl_payout_with_debt("Approved for 500,000")
+        settlement.payout_amount = 900_000
+        self.assertFalse(settlement.debt_approval_reason)
+        self.assertEqual(settlement.applied_amount, 1_100_000)
+        with self.assertRaisesRegex(UserError, "Manager must approve"):
+            settlement.action_confirm()
+
+    def test_payout_cannot_exceed_funds_held(self):
+        self._owe_and_hold(2_000_000)
+        with self.assertRaisesRegex(UserError, "at most"):
+            self._settlement(self.fs, 'interim', payout_amount=2_500_000)
+
+    def test_default_split_pays_the_rest(self):
+        self._owe_and_hold(5_000_000)
+        settlement = self._settlement(self.fs, 'interim')
+        self.assertEqual(settlement.payout_amount, 1_340_000)
+        self.assertEqual(settlement.applied_amount, 3_660_000)
+        self.assertEqual(settlement.owed_after, 0)
+        self.assertFalse(settlement.needs_debt_approval)
+        settlement.action_confirm()
+        self.assertEqual(settlement.with_user(self.env.user).payment_id.amount, 1_340_000)
+        self.fs.invalidate_recordset()
+        self.assertEqual(self.fs.balance_owed, 0)
+        self.assertEqual(self.fs.funds_held, 0)
+
+    def test_money_not_paid_nor_applied_stays_held(self):
+        self._owe_and_hold(5_000_000)
+        settlement = self._settlement(self.fs, 'interim', payout_amount=1_000_000)
+        self.assertEqual(settlement.applied_amount, 3_660_000)
+        self.assertEqual(settlement.kept_amount, 340_000)
+        settlement.action_confirm()
+        self.fs.invalidate_recordset()
+        self.assertEqual(self.fs.balance_owed, 0)
+        self.assertEqual(self.fs.funds_held, 340_000)
 
     def test_release_after_zero_balance_settlement(self):
         self._receive(self.fs, 50_000)

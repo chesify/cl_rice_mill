@@ -319,7 +319,7 @@ class ClRiceFarmerSeason(models.Model):
         for settlement in self.settlement_ids.filtered(
                 lambda s: s.settlement_type == 'interim' and s.state == 'paid' and s.payment_id):
             add(settlement.payment_id.date, 'owed', 'payout', self.env._(
-                "Paid out to you (%s)", settlement.name), settlement.payment_id.amount)
+                "Paid to you (%s)", settlement.name), settlement.payment_id.amount)
         lines.sort(key=lambda line: (line['date'] or fields.Date.today(), line['kind']))
         for sequence, line in enumerate(lines):
             line['sequence'] = sequence
@@ -412,6 +412,18 @@ class ClRiceFarmerSeason(models.Model):
             line['balance'] = balance
         charges = sum(line['amount'] for line in lines if line['kind'] == 'owed')
         receipts = sum(line['amount'] for line in lines if line['kind'] == 'earned')
+        # interim payouts: how the money held was split between the balance and the farmer
+        payouts = []
+        for settlement in self.settlement_ids.filtered(
+                lambda s: s.settlement_type == 'interim' and s.state == 'paid').sorted('date'):
+            if (date_from and settlement.date < date_from) or (date_to and settlement.date > date_to):
+                continue
+            payouts.append({
+                'date': settlement.date,
+                'name': settlement.name,
+                'applied': settlement.applied_amount,
+                'paid': settlement.payment_id.amount if settlement.payment_id else 0.0,
+            })
         return {
             'date_from': date_from,
             'date_to': date_to,
@@ -420,6 +432,7 @@ class ClRiceFarmerSeason(models.Model):
             'charges': charges,
             'receipts': receipts,
             'closing': balance,
+            'payouts': payouts,
         }
 
     @api.depends('loan_ids.state', 'loan_ids.amount',
@@ -666,26 +679,60 @@ class ClRiceFarmerSeason(models.Model):
             (item | counterpart).reconcile()
         return move, applied
 
-    def _cl_apply_funds_held(self):
+    def _cl_funds_held_lines(self):
+        """Open items of the farmer's funds held account, oldest first."""
+        self.ensure_one()
+        return self.env['account.move.line'].sudo().search([
+            ('cl_farmer_season_id', '=', self.id),
+            ('parent_state', '=', 'posted'),
+            ('account_id', '=', self.company_id.cl_rice_funds_held_account_id.id),
+            ('reconciled', '=', False),
+            ('amount_residual', '<', 0),
+        ], order='date, id')
+
+    def _cl_funds_held_available(self):
+        self.ensure_one()
+        return -sum(self._cl_funds_held_lines().mapped('amount_residual'))
+
+    def _cl_payout_split(self, funds_held, owed, payout):
+        """How an interim payout splits the money held.
+
+        :return: dict with ``applied_amount`` (to the debt), ``kept_amount`` (stays held), ``owed_after``
+            and ``needs_debt_approval`` (paid out while the farmer still owes)
+        """
+        currency = self.currency_id or self.env.company.currency_id
+        funds_held, owed, payout = funds_held or 0.0, owed or 0.0, max(payout or 0.0, 0.0)
+        applied = currency.round(max(min(funds_held - payout, owed), 0.0))
+        owed_after = currency.round(max(owed - applied, 0.0))
+        return {
+            'applied_amount': applied,
+            'kept_amount': currency.round(max(funds_held - payout - applied, 0.0)),
+            'owed_after': owed_after,
+            'needs_debt_approval': bool(currency.compare_amounts(payout, 0) > 0
+                                        and currency.compare_amounts(owed_after, 0) > 0),
+        }
+
+    def _cl_cover_for(self, owed):
+        """Collateral cover (%) of the stock held against ``owed``; 0 when nothing is owed."""
+        if len(self) != 1 or not owed or owed <= 0:
+            return 0.0
+        return self.collateral_value / owed * 100.0
+
+    def _cl_apply_funds_held(self, limit=None):
         """Pay the farmer's open balance with the money the mill holds for him.
 
-        :return: the amount applied
+        :param limit: apply at most this amount
+        :return: (amount applied, journal entry)
         """
         self.ensure_one()
         company = self.company_id
         funds_account = company.cl_rice_funds_held_account_id
-        funds_lines = self.env['account.move.line'].sudo().search([
-            ('cl_farmer_season_id', '=', self.id),
-            ('parent_state', '=', 'posted'),
-            ('account_id', '=', funds_account.id),
-            ('reconciled', '=', False),
-            ('amount_residual', '<', 0),
-        ], order='date, id')
-        available = -sum(funds_lines.mapped('amount_residual'))
-        owed = self._cl_balance_owed()
-        amount = min(available, owed)
+        funds_lines = self._cl_funds_held_lines()
+        amount = min(-sum(funds_lines.mapped('amount_residual')), self._cl_balance_owed())
+        if limit is not None:
+            amount = min(amount, limit)
         if self.currency_id.compare_amounts(amount, 0) <= 0:
-            return 0.0
+            return 0.0, self.env['account.move']
         move, applied = self._cl_post_allocation(
             company.cl_rice_settlement_journal_id,
             {'account_id': funds_account.id, 'partner_id': self.partner_id.id, 'cl_farmer_season_id': self.id},
@@ -694,7 +741,7 @@ class ClRiceFarmerSeason(models.Model):
         )
         if move:
             (move.line_ids.filtered(lambda l: l.account_id == funds_account) | funds_lines).reconcile()
-        return applied
+        return applied, move
 
     def _cl_find_lot(self, product):
         self.ensure_one()

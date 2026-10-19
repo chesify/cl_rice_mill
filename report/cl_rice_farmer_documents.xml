@@ -100,6 +100,27 @@
                         </p>
                         <t t-call="cl_rice_mill.report_farmer_block" partner="fs.partner_id" season="fs.season_id" officer="fs.field_officer_id"/>
                         <t t-call="cl_rice_mill.report_statement_table" currency="fs.currency_id" statement="statement"/>
+                        <t t-if="statement['payouts']">
+                            <h5 class="mt-3">Money held for you, paid out</h5>
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th class="text-start">Date</th>
+                                        <th class="text-start">Reference</th>
+                                        <th class="text-end">Applied to your balance</th>
+                                        <th class="text-end">Paid to you</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="statement['payouts']" t-as="payout">
+                                        <td><span t-out="payout['date'].strftime('%d/%m/%Y')"/></td>
+                                        <td><span t-out="payout['name']"/></td>
+                                        <td class="text-end"><span t-out="payout['applied']" t-options="{'widget': 'monetary', 'display_currency': fs.currency_id}"/></td>
+                                        <td class="text-end"><span t-out="payout['paid']" t-options="{'widget': 'monetary', 'display_currency': fs.currency_id}"/></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </t>
                         <div class="row mt-3">
                             <div class="col-6">
                                 <table class="table table-sm table-bordered">
@@ -212,7 +233,17 @@
                             </tfoot>
                         </table>
                         <h5 class="mt-4">Settled now</h5>
-                        <table class="table table-sm table-bordered w-75">
+                        <table class="table table-sm table-bordered w-75" t-if="settlement.settlement_type == 'interim'">
+                            <tr><th>Money held for you</th><td class="text-end"><span t-field="settlement.funds_held_amount"/></td></tr>
+                            <tr><th>Owed by you before this payout</th><td class="text-end"><span t-field="settlement.owed_before"/></td></tr>
+                            <tr><th>Applied to your balance</th><td class="text-end"><span t-field="settlement.applied_amount"/></td></tr>
+                            <tr class="fw-bold"><th>Paid to you</th><td class="text-end"><span t-field="settlement.payout_amount"/></td></tr>
+                            <tr t-if="settlement.kept_amount"><th>Still held for you</th><td class="text-end"><span t-field="settlement.kept_amount"/></td></tr>
+                            <tr><th>Still owed by you</th><td class="text-end"><span t-field="settlement.owed_after"/></td></tr>
+                            <tr t-if="settlement.payment_id"><th>Paid by</th>
+                                <td class="text-end"><span t-field="settlement.payment_id.journal_id.name"/> on <span t-field="settlement.payment_id.date"/></td></tr>
+                        </table>
+                        <table class="table table-sm table-bordered w-75" t-else="">
                             <tr><th>Still owed by you (open items)</th><td class="text-end"><span t-field="settlement.owed_total"/></td></tr>
                             <tr><th>Money held for you (open items)</th><td class="text-end"><span t-field="settlement.earned_total"/></td></tr>
                             <tr class="fw-bold">

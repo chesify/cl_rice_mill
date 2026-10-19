@@ -35,7 +35,10 @@
                     <button name="action_confirm" type="object" string="Pay Out" class="btn-primary"
                             invisible="state != 'draft' or settlement_type != 'interim'"
                             groups="cl_rice_mill.cl_rice_mill_group_accountant"
-                            confirm="The money held first pays what the farmer owes, the rest is paid out to him. Continue?"/>
+                            confirm="The amount applied to the debt pays the oldest open items and the amount to pay is paid out to the farmer. Continue?"/>
+                    <button name="action_open_payout_with_debt" type="object" string="Approve Payout with Debt"
+                            invisible="state != 'draft' or not needs_debt_approval or debt_approval_reason"
+                            groups="cl_rice_mill.cl_rice_mill_group_manager"/>
                     <button name="action_open_stock_override" type="object" string="Allow Although Stock Is Held"
                             invisible="state != 'draft' or settlement_type != 'final' or stock_held_kg &lt;= 0 or stock_override_reason"
                             groups="cl_rice_mill.cl_rice_mill_group_manager"/>
@@ -51,6 +54,11 @@
                          invisible="stock_held_kg &lt;= 0 or settlement_type != 'final' or state != 'draft'">
                         The farmer still has <field name="stock_held_kg" class="d-inline"/> kg in the warehouse.
                         Release it first, or use an interim payout.
+                    </div>
+                    <div class="alert alert-warning mb-2" role="alert"
+                         invisible="state != 'draft' or not needs_debt_approval or debt_approval_reason">
+                        The farmer still owes <field name="owed_after" class="d-inline"/> after this payout
+                        (collateral cover <field name="cover_after" class="d-inline"/>%). A Rice Mill Manager must approve it.
                     </div>
                     <div class="oe_title">
                         <h1><field name="name"/></h1>
@@ -72,7 +80,25 @@
                                    decoration-danger="net_amount &lt; 0" decoration-success="net_amount &gt; 0"/>
                         </group>
                     </group>
-                    <group>
+                    <group string="Money Held" invisible="settlement_type != 'interim'">
+                        <group>
+                            <field name="funds_held_amount"/>
+                            <field name="owed_before"/>
+                            <field name="payout_amount" readonly="state != 'draft'"/>
+                            <field name="applied_amount"/>
+                        </group>
+                        <group>
+                            <field name="kept_amount" invisible="not kept_amount"/>
+                            <field name="owed_after" decoration-danger="owed_after &gt; 0"/>
+                            <field name="cover_after" invisible="not owed_after"/>
+                            <field name="payout_journal_id" readonly="state != 'draft'"/>
+                            <field name="payment_id" invisible="not payment_id"/>
+                            <field name="debt_approval_uid" invisible="not debt_approval_uid"/>
+                            <field name="debt_approval_reason" invisible="not debt_approval_reason"/>
+                            <field name="needs_debt_approval" invisible="1"/>
+                        </group>
+                    </group>
+                    <group invisible="settlement_type == 'interim'">
                         <group string="If the Farmer Still Owes" invisible="net_amount &gt;= 0">
                             <field name="negative_policy" readonly="state != 'draft'" widget="radio"/>
                             <field name="next_season_id" readonly="state != 'draft'"

@@ -72,6 +72,28 @@ class ClRiceSettlement(models.Model):
         'account.journal', string="Pay Out From", check_company=True, domain="[('type', 'in', ('cash', 'bank'))]")
     payout_method = fields.Selection(related='partner_id.cl_payout_method', string="Payout Method")
 
+    # interim payout: how the money held is split between the farmer and the debt
+    funds_held_amount = fields.Monetary(
+        string="Funds Held", readonly=True, copy=False,
+        help="Money held for the farmer when the payout was prepared.")
+    owed_before = fields.Monetary(
+        string="Owed Before Payout", readonly=True, copy=False,
+        help="What the farmer owed when the payout was prepared.")
+    payout_amount = fields.Monetary(string="Amount to Pay the Farmer", tracking=True, copy=False)
+    applied_amount = fields.Monetary(
+        string="Applied to the Debt", compute='_compute_interim_split', store=True,
+        help="Funds held minus the amount paid out, up to what the farmer owes.")
+    kept_amount = fields.Monetary(
+        string="Kept as Funds Held", compute='_compute_interim_split', store=True,
+        help="Neither applied to the debt nor paid out: stays held for the farmer.")
+    owed_after = fields.Monetary(string="Still Owed After Payout", compute='_compute_interim_split', store=True)
+    cover_after = fields.Float(
+        string="Collateral Cover After Payout (%)", compute='_compute_cover_after', digits=(16, 1),
+        help="Stock held, at the season reference prices, against what the farmer still owes after the payout.")
+    needs_debt_approval = fields.Boolean(compute='_compute_interim_split', store=True)
+    debt_approval_reason = fields.Text(string="Payout with Debt Reason", readonly=True, copy=False)
+    debt_approval_uid = fields.Many2one('res.users', string="Payout with Debt Approved By", readonly=True, copy=False)
+
     move_id = fields.Many2one('account.move', string="Settlement Entry", readonly=True, copy=False)
     payment_id = fields.Many2one('account.payment', string="Payout", readonly=True, copy=False)
     carry_loan_id = fields.Many2one('cl.rice.loan', string="Carried Forward Loan", readonly=True, copy=False)
@@ -88,6 +110,30 @@ class ClRiceSettlement(models.Model):
             settlement.net_amount = settlement.earned_total - settlement.owed_total
             settlement.statement_charges = sum(statement.filtered(lambda l: l.kind == 'owed').mapped('amount'))
             settlement.statement_receipts = sum(statement.filtered(lambda l: l.kind == 'earned').mapped('amount'))
+
+    @api.depends('settlement_type', 'funds_held_amount', 'owed_before', 'payout_amount')
+    def _compute_interim_split(self):
+        for settlement in self:
+            if settlement.settlement_type != 'interim':
+                settlement.update({'applied_amount': 0.0, 'kept_amount': 0.0, 'owed_after': 0.0,
+                                   'needs_debt_approval': False})
+                continue
+            settlement.update(settlement.farmer_season_id._cl_payout_split(
+                settlement.funds_held_amount, settlement.owed_before, settlement.payout_amount))
+
+    @api.depends('owed_after', 'farmer_season_id')
+    def _compute_cover_after(self):
+        for settlement in self:
+            settlement.cover_after = settlement.farmer_season_id._cl_cover_for(settlement.owed_after)
+
+    def write(self, vals):
+        if 'payout_amount' in vals:
+            # an approval is given for one amount only
+            changed = self.filtered(lambda s: s.debt_approval_reason and s.currency_id.compare_amounts(
+                s.payout_amount, vals['payout_amount'] or 0.0))
+            if changed:
+                super(ClRiceSettlement, changed).write({'debt_approval_reason': False, 'debt_approval_uid': False})
+        return super().write(vals)
 
     @api.depends('company_id')
     def _compute_currency_id(self):
@@ -129,10 +175,13 @@ class ClRiceSettlement(models.Model):
             fs._cl_check_open()
             settlement.line_ids.unlink()
             statement = [dict(vals, line_type='statement') for vals in fs.sudo()._cl_statement_breakdown()]
-            settlement.write({
+            values = {
                 'line_ids': [(0, 0, vals) for vals in settlement._cl_statement_lines() + statement],
                 'stock_held_kg': fs._cl_stock_held_kg(),
-            })
+            }
+            if settlement.settlement_type == 'interim':
+                values.update(settlement._cl_interim_snapshot())
+            settlement.write(values)
 
     def _cl_open_lines(self):
         return self.line_ids.filtered(lambda l: l.line_type == 'open')
@@ -314,39 +363,56 @@ class ClRiceSettlement(models.Model):
         if self.state == 'paid':
             partner._cl_rice_notify('settlement_paid', self)
 
+    def _cl_interim_snapshot(self):
+        self.ensure_one()
+        fs = self.farmer_season_id.sudo()
+        return {'funds_held_amount': fs._cl_funds_held_available(), 'owed_before': fs._cl_balance_owed()}
+
     def _cl_post_interim(self):
-        """Interim payout: the money held first pays the farmer's balance, the rest is paid out;
-        the season stays open."""
+        """Interim payout: part of the money held pays the farmer's open balance (oldest first), part is paid
+        out to the farmer, the rest stays held. The season stays open."""
         self.ensure_one()
         fs = self.farmer_season_id
-        if not self.payout_journal_id:
-            raise UserError(self.env._("Choose the journal the farmer is paid from."))
-        applied = fs.sudo()._cl_apply_funds_held()
-        application = self.env['account.move']
-        if applied:
-            application = self.env['account.move'].sudo().search(
-                [('cl_farmer_season_id', '=', fs.id), ('journal_id', '=', self.company_id.cl_rice_settlement_journal_id.id)],
-                order='id desc', limit=1)
-        funds_account = self.company_id.cl_rice_funds_held_account_id
-        funds_lines = self.env['account.move.line'].sudo().search([
-            ('cl_farmer_season_id', '=', fs.id),
-            ('parent_state', '=', 'posted'),
-            ('account_id', '=', funds_account.id),
-            ('reconciled', '=', False),
-            ('amount_residual', '<', 0),
-        ])
-        amount = -sum(funds_lines.mapped('amount_residual'))
-        if self.currency_id.compare_amounts(amount, 0) <= 0:
+        currency = self.currency_id
+        # the farmer's account may have moved since the payout was prepared: work on today's figures
+        snapshot = self._cl_interim_snapshot()
+        if any(currency.compare_amounts(self[name], value) for name, value in snapshot.items()):
+            self.write(snapshot)
+        payout = self.payout_amount
+        if currency.compare_amounts(payout, 0) < 0:
+            raise UserError(self.env._("The amount to pay the farmer cannot be negative."))
+        if currency.compare_amounts(payout, self.funds_held_amount) > 0:
             raise UserError(self.env._(
-                "Nothing can be paid out: the money held for %s does not cover what he owes.", self.partner_id.name))
-        payment = self._cl_create_payout(amount, funds_account)
-        (payment.move_id.line_ids.filtered(lambda l: l.account_id == funds_account) | funds_lines).reconcile()
+                "Only %(held)s is held for %(farmer)s: the farmer cannot be paid %(amount)s.",
+                held=currency.format(self.funds_held_amount), farmer=self.partner_id.name,
+                amount=currency.format(payout)))
+        if currency.is_zero(payout) and currency.is_zero(self.applied_amount):
+            raise UserError(self.env._(
+                "Nothing can be paid out: no money is held for %s.", self.partner_id.name))
+        if self.needs_debt_approval and not self.debt_approval_reason:
+            raise UserError(self.env._(
+                "After this payout %(farmer)s still owes %(owed)s (collateral cover %(cover)s%%). "
+                "A Rice Mill Manager must approve paying out while the farmer owes, with a reason.",
+                farmer=self.partner_id.name, owed=currency.format(self.owed_after), cover=round(self.cover_after, 1)))
+        if not currency.is_zero(payout) and not self.payout_journal_id:
+            raise UserError(self.env._("Choose the journal the farmer is paid from."))
+        applied, application = 0.0, self.env['account.move']
+        if not currency.is_zero(self.applied_amount):
+            applied, application = fs.sudo()._cl_apply_funds_held(self.applied_amount)
+        payment = self.env['account.payment']
+        if not currency.is_zero(payout):
+            funds_account = self.company_id.cl_rice_funds_held_account_id
+            payment = self._cl_create_payout(payout, funds_account)
+            (payment.move_id.line_ids.filtered(lambda l: l.account_id == funds_account)
+             | fs.sudo()._cl_funds_held_lines()).reconcile()
         self.write({'state': 'paid', 'payment_id': payment.id, 'move_id': application.id})
         self.message_post(body=self.env._(
-            "Interim payout of %(amount)s by %(user)s (%(applied)s first applied to the balance).",
-            amount=self.currency_id.format(amount), user=self.env.user.name,
-            applied=self.currency_id.format(applied)))
-        self.partner_id._cl_rice_notify('settlement_paid', self)
+            "Interim payout by %(user)s: %(applied)s applied to the balance, %(amount)s paid to the farmer, "
+            "%(kept)s kept as funds held, %(owed)s still owed.",
+            user=self.env.user.name, applied=currency.format(applied), amount=currency.format(payout),
+            kept=currency.format(self.kept_amount), owed=currency.format(self.owed_after)))
+        if payment:
+            self.partner_id._cl_rice_notify('settlement_paid', self)
 
     def _cl_next_farmer_season(self):
         self.ensure_one()
@@ -440,7 +506,8 @@ class ClRiceSettlement(models.Model):
         }
 
     def _cl_reason_actions(self):
-        return {'reverse': self._cl_reverse, 'stock_override': self._cl_stock_override}
+        return {'reverse': self._cl_reverse, 'stock_override': self._cl_stock_override,
+                'payout_with_debt': self._cl_payout_with_debt}
 
     def action_open_stock_override(self):
         self.ensure_one()
@@ -453,6 +520,30 @@ class ClRiceSettlement(models.Model):
             'target': 'new',
             'context': {'default_res_model': self._name, 'default_res_id': self.id, 'default_action': 'stock_override'},
         }
+
+    def action_open_payout_with_debt(self):
+        self.ensure_one()
+        self._cl_check_manager()
+        return {
+            'name': self.env._("Pay Out Although the Farmer Owes"),
+            'type': 'ir.actions.act_window',
+            'res_model': 'cl.rice.reason',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_res_model': self._name, 'default_res_id': self.id, 'default_action': 'payout_with_debt'},
+        }
+
+    def _cl_payout_with_debt(self, reason, amount=None, date=None):
+        self.ensure_one()
+        self._cl_check_manager()
+        if self.state != 'draft' or self.settlement_type != 'interim':
+            raise UserError(self.env._("Only a draft interim payout can be approved."))
+        self.write({'debt_approval_reason': reason, 'debt_approval_uid': self.env.uid})
+        self.message_post(body=self.env._(
+            "Payout of %(amount)s approved by %(user)s although %(owed)s stays owed "
+            "(collateral cover after payout %(cover)s%%). Reason: %(reason)s",
+            amount=self.currency_id.format(self.payout_amount), user=self.env.user.name,
+            owed=self.currency_id.format(self.owed_after), cover=round(self.cover_after, 1), reason=reason))
 
     def _cl_stock_override(self, reason, amount=None, date=None):
         self.ensure_one()
