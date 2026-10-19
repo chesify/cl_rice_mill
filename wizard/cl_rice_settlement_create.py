@@ -85,8 +85,8 @@ class ClRiceSettlementCreate(models.TransientModel):
             'farmer_season_id': fs.id,
             'date': self.date,
             'settlement_type': self.settlement_type,
-            'negative_policy': self.negative_policy,
-            'next_season_id': self.next_season_id.id,
+            'negative_policy': self.negative_policy if self.settlement_type == 'final' else 'keep',
+            'next_season_id': self.next_season_id.id if self.settlement_type == 'final' else False,
             'payout_journal_id': self.payout_journal_id.id,
             'payout_amount': self.payout_amount if self.settlement_type == 'interim' else 0.0,
         })

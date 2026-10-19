@@ -99,11 +99,12 @@
                         </group>
                     </group>
                     <group invisible="settlement_type == 'interim'">
-                        <group string="If the Farmer Still Owes" invisible="net_amount &gt;= 0">
-                            <field name="negative_policy" readonly="state != 'draft'" widget="radio"/>
+                        <group string="If the Farmer Still Owes" invisible="net_amount &gt;= 0 or settlement_type != 'final'">
+                            <field name="negative_policy" readonly="state != 'draft'" widget="radio"
+                                   invisible="settlement_type != 'final'"/>
                             <field name="next_season_id" readonly="state != 'draft'"
-                                   invisible="negative_policy != 'carry_forward'"
-                                   required="negative_policy == 'carry_forward' and net_amount &lt; 0 and state == 'draft'"/>
+                                   invisible="settlement_type != 'final' or negative_policy != 'carry_forward'"
+                                   required="settlement_type == 'final' and negative_policy == 'carry_forward' and net_amount &lt; 0 and state == 'draft'"/>
                             <field name="carry_loan_id" invisible="not carry_loan_id"/>
                         </group>
                         <group string="Payout" invisible="net_amount &lt;= 0">

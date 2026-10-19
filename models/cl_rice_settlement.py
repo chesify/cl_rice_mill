@@ -145,6 +145,9 @@ class ClRiceSettlement(models.Model):
     def create(self, vals_list):
         FarmerSeason = self.env['cl.rice.farmer.season']
         for vals in vals_list:
+            if vals.get('settlement_type') == 'interim':
+                # an interim payout never carries a balance forward: the season stays open
+                vals.update(negative_policy='keep', next_season_id=False)
             company = FarmerSeason.browse(vals.get('farmer_season_id')).company_id or self.env.company
             if vals.get('name', self.env._("New")) == self.env._("New"):
                 vals['name'] = self.env['ir.sequence'].with_company(company).next_by_code('cl.rice.settlement') or '/'

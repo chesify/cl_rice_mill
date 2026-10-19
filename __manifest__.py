@@ -1,6 +1,6 @@
 {
     'name': "Rice Mill (Luvanda)",
-    'version': '20.0.4.0.0',
+    'version': '20.0.4.1.0',
     'category': 'Agriculture',
     'summary': "Farmer loans and services, paddy storage, milling, stock release control and settlement",
     'description': """
