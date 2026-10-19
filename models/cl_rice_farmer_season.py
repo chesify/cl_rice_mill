@@ -14,6 +14,7 @@ class ClRiceFarmerSeason(models.Model):
     _description = "Farmer Season"
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'season_id desc, name desc'
+    _rec_names_search = ['name', 'partner_id.name', 'partner_id.cl_farmer_code']
 
     name = fields.Char(
         string="Reference", required=True, readonly=True, copy=False, default=lambda self: self.env._("New"))

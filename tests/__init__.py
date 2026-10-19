@@ -10,3 +10,4 @@ from . import test_costs_analytic
 from . import test_data_accuracy
 from . import test_documents_portal
 from . import test_dashboard
+from . import test_farmer_season_picker

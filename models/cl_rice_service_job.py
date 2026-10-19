@@ -18,7 +18,7 @@ class ClRiceServiceJob(models.Model):
         string="Reference", required=True, readonly=True, copy=False, default=lambda self: self.env._("New"))
     farmer_season_id = fields.Many2one(
         'cl.rice.farmer.season', string="Farmer Season", required=True, index=True, tracking=True,
-        check_company=True, domain="[('state', 'not in', ('draft', 'settled', 'closed'))]")
+        domain="[('state', 'not in', ('draft', 'settled', 'closed')), ('company_id', 'in', allowed_company_ids)]")
     partner_id = fields.Many2one(related='farmer_season_id.partner_id', store=True, string="Farmer", index=True)
     season_id = fields.Many2one(related='farmer_season_id.season_id', store=True, index=True)
     field_officer_id = fields.Many2one(related='farmer_season_id.field_officer_id', store=True, index=True)
